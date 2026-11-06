@@ -1,9 +1,9 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, Bookmark, Building2, Check, CheckCircle2, Globe, Mail, MapPin, Send, Users, X, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, Chip, Panel, QualificationBadge, ReviewBadge, pageHead, scoreTone } from "@/components/app/ui";
+import { Avatar, Chip, Panel, QualificationBadge, ReviewBadge, SyntheticTag, pageHead, scoreTone } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
-import { nextAction, qualificationExplanation, selectionReasons } from "@/lib/demo/engine";
+import { nextAction, selectionReasons } from "@/lib/demo/engine";
 import { useDemo } from "@/lib/demo/store";
 import type { ReviewStatus } from "@/lib/demo/types";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ function LeadProfile() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{ct.name}</h1>
           <p className="text-sm text-muted-foreground">{ct.title} at {co.name} · {campaign?.name}</p>
-          <div className="mt-2 flex gap-2"><QualificationBadge value={lead.qualification} /><ReviewBadge value={lead.review} /></div>
+          <div className="mt-2 flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">{co.prospectId}</span><QualificationBadge value={lead.qualification} /><ReviewBadge value={lead.review} /><SyntheticTag /></div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant={lead.review === "Rejected" ? "secondary" : "outline"} onClick={() => act("Rejected")}><X className="h-4 w-4" /> Reject</Button>
@@ -54,26 +54,30 @@ function LeadProfile() {
               <div className="text-xs font-semibold uppercase tracking-wider text-primary">Recommended next action</div>
               <div className="mt-2 text-lg font-bold">{action.title}</div>
               <p className="mt-1 text-sm text-muted-foreground">{action.detail}</p>
-              <div className="mt-3 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Qualification: </span>{qualificationExplanation(lead)}</div>
+              <div className="mt-3 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Qualification: </span>{lead.explanation}</div>
               {lead.review !== "Rejected" && <Button size="sm" className="mt-4" asChild><Link to="/outreach" search={{ lead: lead.id }}><Send className="h-3.5 w-3.5" /> Open in Outreach</Link></Button>}
             </div>
           </div>
 
-          <Panel title="Score breakdown">
+          <Panel title="Score breakdown" action={<span className="text-xs text-muted-foreground">Weights 30 / 20 / 20 / 30</span>}>
             <div className="mb-5 flex h-2.5 overflow-hidden rounded-full bg-muted">
-              {lead.factors.map((f, i) => <div key={f.key} style={{ width: `${f.points}%`, background: `var(--chart-${(i % 5) + 1})` }} />)}
+              {lead.factors.map((f, i) => <div key={f.key} style={{ width: `${f.points}%`, background: `var(--chart-${i + 1})` }} />)}
             </div>
             <div className="space-y-4">
               {lead.factors.map((f, i) => (
                 <div key={f.key}>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 font-medium"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: `var(--chart-${(i % 5) + 1})` }} />{f.label}</span>
-                    <span className="tabular-nums text-muted-foreground">{f.points} / {f.weight}</span>
+                    <span className="flex items-center gap-2 font-medium"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: `var(--chart-${i + 1})` }} />{f.label} <span className="font-normal text-muted-foreground">({f.weight}%)</span></span>
+                    <span className="font-semibold tabular-nums">{f.points} <span className="font-normal text-muted-foreground">/ {f.weight}</span></span>
                   </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${f.value * 100}%`, background: `var(--chart-${(i % 5) + 1})` }} /></div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${(f.points / f.weight) * 100}%`, background: `var(--chart-${i + 1})` }} /></div>
                   <p className="mt-1 text-xs text-muted-foreground">{f.reason}</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-5 flex items-center justify-between rounded-md bg-muted/60 px-4 py-3 text-sm">
+              <span className="text-muted-foreground">Total</span>
+              <span className="font-mono font-semibold tabular-nums">{lead.factors.map((f) => f.points).join(" + ")} = {lead.score}</span>
             </div>
           </Panel>
 
@@ -96,7 +100,7 @@ function LeadProfile() {
             <div className="mb-3 font-semibold">{ct.name}</div>
             <dl className="space-y-3 text-sm">
               <Row icon={Users} k="Position" v={`${ct.title} · ${ct.seniority}`} />
-              <Row icon={Mail} k="Email (fictional)" v={ct.email} />
+              <Row icon={Mail} k="Email (fictional, not verified)" v={ct.email} />
               <Row icon={Zap} k="Time in role" v={`${ct.tenureMonths} months`} />
             </dl>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{ct.summary}</p>
@@ -105,24 +109,20 @@ function LeadProfile() {
             <div className="mb-2 font-semibold">{co.name}</div>
             <p className="mb-4 text-xs leading-relaxed text-muted-foreground">{co.description}</p>
             <dl className="space-y-3 text-sm">
-              <Row icon={Building2} k="Industry" v={co.industry} />
-              <Row icon={Users} k="Company size" v={`${co.employees.toLocaleString("en-US")} employees · ~$${co.revenueM}M revenue`} />
+              <Row icon={Building2} k="Industry" v={`${co.sector} · ${co.industry}`} />
+              <Row icon={Users} k="Company size" v={`${co.employees} employees · ${co.sizeCategory}`} />
               <Row icon={MapPin} k="Location" v={`${co.city}, ${co.country}`} />
               <Row icon={Globe} k="Website (fictional)" v={co.website.replace("https://", "")} />
             </dl>
-            <div className="mt-4 flex flex-wrap gap-1.5"><Chip>Founded {co.founded}</Chip><Chip>{co.fundingStage}</Chip>{co.techStack.map((t) => <Chip key={t}>{t}</Chip>)}</div>
+            <div className="mt-4 flex flex-wrap gap-1.5"><Chip>Founded {co.founded}</Chip></div>
           </Panel>
-          <Panel title="Buying signals">
-            {co.signals.length === 0 ? <p className="text-sm text-muted-foreground">No recent signals detected.</p> : (
-              <ul className="space-y-3">
-                {[...co.signals].sort((a, b) => a.daysAgo - b.daysAgo).map((s) => (
-                  <li key={s.type} className="flex gap-3 text-sm">
-                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                    <div><div className="font-medium">{s.type}</div><div className="text-xs text-muted-foreground">{co.name} {s.detail} · {s.daysAgo} days ago</div></div>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <Panel title="Record details" action={<SyntheticTag />}>
+            <dl className="space-y-3 text-sm">
+              <div><dt className="text-xs text-muted-foreground">Prospect ID</dt><dd className="font-mono">{co.prospectId}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Source</dt><dd>{co.source}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Context note (fictional)</dt><dd>{co.name} {co.contextNote}.</dd></div>
+            </dl>
+            <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">All companies, people, emails and websites in this record are invented for demonstration. Contact details are not verified.</p>
           </Panel>
         </div>
       </div>

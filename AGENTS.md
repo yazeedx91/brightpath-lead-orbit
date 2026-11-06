@@ -30,5 +30,5 @@ use the editor.
 <!-- LOVABLE:END -->
 
 ## Project rules
-- ProjectX is a local-only demo: all data is synthetic and generated deterministically in `src/lib/demo/` (seeded RNG, built lazily, never at module scope); no backend, auth, or external services. Why: stakeholder demo must be repeatable and offline-safe.
+- ProjectX is a local-only demo: all data is the fixed hand-written Synthetic Demo Dataset in `src/lib/demo/data.ts` (no randomness; sample campaign uses preset component scores, custom campaigns use rule-based scores with the same weights); no backend, auth, or external services. Why: stakeholder demo must be repeatable and offline-safe.
 - App state lives in `DemoProvider` (React context + localStorage); scoring/draft logic stays as pure functions in `engine.ts` with tests in `engine.test.ts`. Why: keeps logic testable and the UI thin.

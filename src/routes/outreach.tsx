@@ -28,7 +28,7 @@ function Outreach() {
   const [view, setView] = useState<"prospects" | "saved">("prospects");
 
   const candidates = useMemo(() => leads
-    .filter((l) => l.review !== "Rejected" && (l.qualification !== "Not qualified" || l.review !== "Pending"))
+    .filter((l) => l.review !== "Rejected" && (l.qualification !== "Low Fit" || l.review !== "Pending"))
     .sort((a, b) => REVIEW_ORDER[a.review] - REVIEW_ORDER[b.review] || b.score - a.score), [leads]);
   const list = (view === "saved" ? leads.filter((l) => drafts[l.id]) : candidates).filter((l) => {
     if (!q) return true;
@@ -97,7 +97,7 @@ function Outreach() {
           const ct = contacts.get(lead.contactId)!; const co = companies.get(lead.companyId)!;
           return (
             <Panel title={<span>To: {ct.name} <span className="font-normal text-muted-foreground">· {ct.email}</span></span>} action={<Link to="/leads/$id" params={{ id: lead.id }} className="text-xs font-medium text-primary">View profile</Link>}>
-              <div className="mb-4 text-xs text-muted-foreground">{ct.title} at {co.name}, {co.city} · score {lead.score}{co.signals[0] ? ` · signal: ${co.signals[0].detail}` : ""}</div>
+              <div className="mb-4 text-xs text-muted-foreground">{ct.title} at {co.name}, {co.city} · score {lead.score} · {co.prospectId} · Synthetic Demo Dataset</div>
               <div className="flex flex-wrap items-center gap-3">
                 <ToggleGroup type="single" size="sm" variant="outline" value={tone} onValueChange={(v) => v && (generated ? generate(v as Tone, 0) : setTone(v as Tone))} aria-label="Tone">
                   <ToggleGroupItem value="friendly">Friendly</ToggleGroupItem>

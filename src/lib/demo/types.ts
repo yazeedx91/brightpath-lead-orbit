@@ -1,29 +1,37 @@
 export type Seniority = "C-Level" | "VP" | "Director" | "Manager" | "Individual";
-export type Qualification = "Qualified" | "Needs review" | "Not qualified";
+export type Qualification = "Qualified" | "Review" | "Low Fit";
 export type ReviewStatus = "Pending" | "Approved" | "Rejected" | "Saved";
 export type Tone = "formal" | "concise" | "friendly";
-export type SignalType = "Hiring" | "Funding" | "Expansion" | "New executive" | "Tech change";
+export type FactorKey = "industry" | "geography" | "size" | "decisionMaker";
 
-export interface Signal {
-  type: SignalType;
-  detail: string;
-  daysAgo: number;
+export const DATA_SOURCE = "Synthetic Demo Dataset";
+
+export interface PresetScore {
+  industry: number; // /30
+  geography: number; // /20
+  size: number; // /20
+  decisionMaker: number; // /30
+  explanation: string;
+  nextAction: { title: string; detail: string };
 }
 
 export interface Company {
   id: string;
+  prospectId: string; // e.g. PX-001
   name: string;
-  website: string;
-  industry: string;
+  website: string; // fictional, .example
+  sector: string; // Logistics / Transportation / Warehousing / Distribution / Cold Chain
+  industry: string; // campaign-level industry
   employees: number;
-  revenueM: number; // annual revenue, USD millions
+  sizeCategory: string;
+  revenueM: number;
   country: string;
   city: string;
-  techStack: string[];
-  fundingStage: string;
   founded: number;
-  signals: Signal[];
   description: string;
+  contextNote: string;
+  source: typeof DATA_SOURCE;
+  preset: PresetScore;
 }
 
 export interface Contact {
@@ -34,7 +42,7 @@ export interface Contact {
   seniority: Seniority;
   department: string;
   tenureMonths: number;
-  email: string;
+  email: string; // fictional, .example, not verified
   summary: string;
 }
 
@@ -55,10 +63,11 @@ export interface CampaignInput {
 }
 
 export interface CampaignStats {
-  companies: number;
   discovered: number;
+  enriched: number;
   qualified: number;
   review: number;
+  lowFit: number;
   drafts: number;
 }
 
@@ -73,10 +82,9 @@ export interface Campaign extends CampaignInput {
 }
 
 export interface ScoreFactor {
-  key: "industry" | "location" | "size" | "position" | "signals" | "timing";
+  key: FactorKey;
   label: string;
   weight: number;
-  value: number; // 0..1
   points: number;
   reason: string;
 }
@@ -90,6 +98,8 @@ export interface Lead {
   qualification: Qualification;
   review: ReviewStatus;
   factors: ScoreFactor[];
+  explanation: string;
+  recommendation: { title: string; detail: string };
 }
 
 export interface Draft {

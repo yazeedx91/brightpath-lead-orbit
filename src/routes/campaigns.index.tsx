@@ -30,8 +30,8 @@ function Campaigns() {
               <div className="mt-4 flex flex-wrap gap-1.5">
                 <Chip>{c.industry}</Chip><Chip>{c.country}</Chip>{c.cities.map((x) => <Chip key={x}>{x}</Chip>)}<Chip>{c.employeeMin}–{c.employeeMax} employees</Chip>
               </div>
-              <div className="mt-5 grid grid-cols-4 gap-2 border-t pt-4 text-center">
-                {([["Companies", c.stats.companies], ["Discovered", c.stats.discovered], ["Qualified", c.stats.qualified], ["Approved", cl.filter((l) => l.review === "Approved").length]] as const).map(([k, v]) => (
+              <div className="mt-5 grid grid-cols-3 gap-2 border-t pt-4 text-center sm:grid-cols-6">
+                {([["Discovered", c.stats.discovered], ["Enriched", c.stats.enriched], ["Qualified", c.stats.qualified], ["Review", c.stats.review], ["Low fit", c.stats.lowFit], ["Approved", cl.filter((l) => l.review === "Approved").length]] as const).map(([k, v]) => (
                   <div key={k}><div className="font-display text-lg font-bold tabular-nums">{v}</div><div className="text-[11px] text-muted-foreground">{k}</div></div>
                 ))}
               </div>

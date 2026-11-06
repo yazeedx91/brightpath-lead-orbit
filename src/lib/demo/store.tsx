@@ -12,27 +12,14 @@ interface State {
   guideStep: number | null;
 }
 
-const STORAGE_KEY = "projectx-demo-v3";
+const STORAGE_KEY = "projectx-demo-v4";
 export const SAMPLE_ID = "cmp-saudi-logistics";
-const EMPTY_STATS = { companies: 0, discovered: 0, qualified: 0, review: 0, drafts: 0 };
+const EMPTY_STATS = { discovered: 0, enriched: 0, qualified: 0, review: 0, lowFit: 0, drafts: 0 };
 
 export function buildSeed(): State {
   const data = getDataset();
   const res = runPipeline(SAMPLE_ID, SAMPLE_CAMPAIGN, data);
-  let q = 0;
-  let n = 0;
-  const leads = res.leads.map((l) => {
-    let review: ReviewStatus = "Pending";
-    if (l.qualification === "Qualified") {
-      q++;
-      if (q % 3 === 1) review = "Approved";
-      else if (q % 5 === 0) review = "Saved";
-    } else if (l.qualification === "Not qualified") {
-      n++;
-      if (n % 4 === 0) review = "Rejected";
-    }
-    return { ...l, review };
-  });
+  const leads = res.leads;
   const campaigns: Campaign[] = [
     { ...SAMPLE_CAMPAIGN, id: SAMPLE_ID, createdAt: "2026-11-02T09:15:00Z", status: "complete", isSample: true, stats: res.stats },
     {
@@ -56,18 +43,12 @@ export function buildSeed(): State {
       stats: EMPTY_STATS,
     },
   ];
-  const companies = new Map(data.companies.map((c) => [c.id, c]));
-  const contacts = new Map(data.contacts.map((c) => [c.id, c]));
   const drafts: Record<string, Draft> = {};
-  leads.filter((l) => l.review === "Approved").slice(0, 2).forEach((l, i) => {
-    drafts[l.id] = { ...generateDraft(l, companies.get(l.companyId)!, contacts.get(l.contactId)!, SAMPLE_CAMPAIGN, "friendly", i), savedAt: `2026-11-03T1${i}:20:00Z` };
-  });
   const events: ActivityEvent[] = [
-    { id: "e5", at: "2026-11-04T11:40:00Z", kind: "campaign", message: "Draft campaign “UAE Retail Distribution” saved" },
-    { id: "e4", at: "2026-11-03T11:20:00Z", kind: "draft", message: "2 outreach drafts saved for approved prospects" },
-    { id: "e3", at: "2026-11-03T09:05:00Z", kind: "review", message: `${leads.filter((l) => l.review === "Approved").length} prospects approved in Saudi Logistics Prospecting` },
-    { id: "e2", at: "2026-11-02T09:18:00Z", kind: "agent", message: `Agent qualified ${res.stats.qualified} of ${res.stats.discovered} prospects for Saudi Logistics Prospecting` },
-    { id: "e1", at: "2026-11-02T09:15:00Z", kind: "campaign", message: "Sample campaign “Saudi Logistics Prospecting” created" },
+    { id: "e4", at: "2026-11-04T11:40:00Z", kind: "campaign", message: "Draft campaign “UAE Retail Distribution” saved (not run)" },
+    { id: "e3", at: "2026-11-02T09:18:00Z", kind: "agent", message: `Agent generated ${res.stats.drafts} outreach drafts for qualified prospects` },
+    { id: "e2", at: "2026-11-02T09:17:00Z", kind: "agent", message: `Scored ${res.stats.discovered} prospects: ${res.stats.qualified} qualified, ${res.stats.review} review, ${res.stats.lowFit} low fit` },
+    { id: "e1", at: "2026-11-02T09:15:00Z", kind: "campaign", message: "Sample campaign “Saudi Logistics Prospecting” loaded from the Synthetic Demo Dataset" },
   ];
   return { campaigns, leads, drafts, events, activeCampaignId: SAMPLE_ID, guideStep: null };
 }

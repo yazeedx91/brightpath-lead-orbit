@@ -2,7 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, ArrowUpDown, Bookmark, Check, ExternalLink, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { PageHeader, QualificationBadge, ReviewBadge, ScoreBadge, pageHead } from "@/components/app/ui";
+import { PageHeader, QualificationBadge, ReviewBadge, ScoreBadge, SyntheticTag, pageHead } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ function Leads() {
       .filter((l) => qual === "all" || l.qualification === qual)
       .filter((l) => rev === "all" || l.review === rev)
       .map((l) => ({ l, co: companies.get(l.companyId)!, ct: contacts.get(l.contactId)! }))
-      .filter(({ co, ct }) => !q || `${ct.name} ${co.name} ${ct.title} ${co.city}`.toLowerCase().includes(q.toLowerCase()));
+      .filter(({ co, ct }) => !q || `${ct.name} ${co.name} ${ct.title} ${co.city} ${co.prospectId}`.toLowerCase().includes(q.toLowerCase()));
     const val = (r: (typeof list)[number]): number | string =>
       sort.key === "score" ? r.l.score : sort.key === "company" ? r.co.name : sort.key === "contact" ? r.ct.name : r.co.employees;
     return list.sort((a, b) => { const x = val(a); const y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * sort.dir; });
@@ -56,7 +56,7 @@ function Leads() {
 
   return (
     <>
-      <PageHeader title="Lead discovery" description={`${counts.all} prospects shown · ${counts.approved} approved. Open any prospect to see why the agent selected it.`} />
+      <PageHeader title="Lead discovery" description={`${counts.all} prospects shown · ${counts.approved} approved. Source: Synthetic Demo Dataset (fictional companies and contacts).`} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -68,7 +68,7 @@ function Leads() {
         </Select>
         <Select value={qual} onValueChange={setQual}>
           <SelectTrigger className="w-44" aria-label="Qualification"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="all">All qualification</SelectItem>{["Qualified", "Needs review", "Not qualified"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+          <SelectContent><SelectItem value="all">All qualification</SelectItem>{["Qualified", "Review", "Low Fit"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={rev} onValueChange={setRev}>
           <SelectTrigger className="w-40" aria-label="Review status"><SelectValue /></SelectTrigger>
@@ -89,6 +89,7 @@ function Leads() {
           <thead className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
             <tr>
               <th className="w-10 px-4 py-3"><Checkbox checked={rows.length > 0 && sel.size === rows.length} onCheckedChange={(v) => setSel(v ? new Set(rows.map((r) => r.l.id)) : new Set())} aria-label="Select all" /></th>
+              <th className="px-3 py-3 font-medium">ID</th>
               <th className="px-3 py-3"><SortHead k="company">Company</SortHead></th>
               <th className="px-3 py-3"><SortHead k="contact">Contact person</SortHead></th>
               <th className="px-3 py-3 font-medium">Job title</th>
@@ -105,12 +106,13 @@ function Leads() {
             {rows.map(({ l, co, ct }) => (
               <tr key={l.id} className="hover:bg-muted/40">
                 <td className="px-4 py-3"><Checkbox checked={sel.has(l.id)} onCheckedChange={(v) => { const n = new Set(sel); if (v) n.add(l.id); else n.delete(l.id); setSel(n); }} aria-label={`Select ${ct.name}`} /></td>
+                <td className="px-3 py-3"><div className="font-mono text-xs">{co.prospectId}</div><SyntheticTag compact /></td>
                 <td className="px-3 py-3 font-medium">{co.name}</td>
                 <td className="px-3 py-3"><Link to="/leads/$id" params={{ id: l.id }} className="font-medium text-primary hover:underline">{ct.name}</Link></td>
                 <td className="px-3 py-3 text-muted-foreground">{ct.title}</td>
-                <td className="px-3 py-3 text-muted-foreground">{co.industry}</td>
+                <td className="px-3 py-3 text-muted-foreground">{co.sector}</td>
                 <td className="px-3 py-3 text-muted-foreground">{co.city}, {co.country}</td>
-                <td className="px-3 py-3 tabular-nums text-muted-foreground">{co.employees.toLocaleString("en-US")}</td>
+                <td className="px-3 py-3 tabular-nums text-muted-foreground">{co.employees}<div className="text-[11px]">{co.sizeCategory}</div></td>
                 <td className="px-3 py-3"><ScoreBadge score={l.score} /></td>
                 <td className="px-3 py-3"><QualificationBadge value={l.qualification} /></td>
                 <td className="px-3 py-3"><ReviewBadge value={l.review} /></td>
@@ -124,7 +126,7 @@ function Leads() {
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={11} className="py-14 text-center text-sm text-muted-foreground">No prospects match these filters.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={12} className="py-14 text-center text-sm text-muted-foreground">No prospects match these filters.</td></tr>}
           </tbody>
         </table>
       </div>

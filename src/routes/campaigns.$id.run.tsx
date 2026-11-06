@@ -27,7 +27,7 @@ const STAGES = [
   { label: "Generating outreach drafts", icon: FileText },
 ];
 
-interface Ev { stage: number; msg: string; reason?: string; discovered?: number; qualified?: number }
+interface Ev { stage: number; msg: string; reason?: string; discovered?: number; enriched?: number; qualified?: number }
 
 function Run() {
   const { id } = Route.useParams();
@@ -44,33 +44,35 @@ function RunInner({ id }: { id: string }) {
     if (!campaign) return [];
     const res = runPipeline(id, campaign, getDataset());
     const c = campaign;
-    const cos = Array.from(new Set(res.leads.map((l) => l.companyId))).map((x) => companies.get(x)!);
     const top = res.leads.slice(0, 3);
     const q = res.stats.qualified;
-    const signals = cos.reduce((a, co) => a + co.signals.length, 0);
+    const n = res.stats.discovered;
+    const step = (k: number) => Math.max(1, Math.round((n * k) / 4));
     return [
       { stage: 0, msg: `Reading brief “${c.name}”`, reason: `Goal: ${c.objective.toLowerCase()}. Offering: ${c.offering.split(/ — | - /)[0]}.` },
       { stage: 0, msg: `Target: ${c.industry} in ${c.cities.length ? c.cities.join(", ") : "all cities"}, ${c.country} · ${c.employeeMin}–${c.employeeMax} employees` },
-      { stage: 0, msg: `Buyer personas: ${c.positions.join(", ")}` },
-      { stage: 1, msg: `Searching the synthetic company index (${getDataset().companies.length} records)` },
-      { stage: 1, msg: `Matched ${res.stats.companies} companies by industry or country`, reason: "Companies outside both the target industry and country are excluded before any enrichment." },
-      { stage: 2, msg: "Mapping leadership teams at matched companies", discovered: Math.round(res.stats.discovered / 2) },
-      { stage: 2, msg: `${res.stats.discovered} decision-makers discovered`, discovered: res.stats.discovered },
-      ...cos.slice(0, 3).map((co) => ({ stage: 3, msg: `Enriched ${co.name} — ${co.city}, ${co.employees.toLocaleString("en-US")} employees, ~$${co.revenueM}M revenue, ${co.techStack.join(" / ")}` })),
-      { stage: 3, msg: `Found ${signals} buying signals (hiring, funding, expansion, leadership and tech changes)` },
-      { stage: 4, msg: "Comparing every prospect with industry, location, size and position criteria" },
+      { stage: 0, msg: `Decision-makers: ${c.positions.join(", ")}` },
+      { stage: 1, msg: `Loading the Synthetic Demo Dataset (${n} fictional records)`, reason: "Demonstration only: no websites, search engines or real databases are queried." },
+      { stage: 1, msg: `${n} candidate companies available in the dataset`, discovered: step(2) },
+      { stage: 2, msg: `Matched one decision-maker per company`, discovered: n },
+      ...res.leads.slice(0, 3).map((l, i) => {
+        const co = companies.get(l.companyId)!;
+        return { stage: 3, msg: `Enriched ${co.prospectId} ${co.name} — ${co.sector}, ${co.city}, ${co.employees} employees`, enriched: step(i + 1) };
+      }),
+      { stage: 3, msg: `Enriched all ${n} prospect profiles`, enriched: n },
+      { stage: 4, msg: "Evaluating industry, geography, company size and decision-maker relevance" },
       ...top.slice(0, 1).map((l) => {
         const ct = contacts.get(l.contactId)!;
-        return { stage: 4, msg: `Strong match: ${ct.name}, ${ct.title} at ${companies.get(l.companyId)!.name}`, reason: l.factors.filter((f) => f.value >= 0.7).map((f) => f.reason).slice(0, 3).join(" · ") };
+        return { stage: 4, msg: `Strong match: ${ct.name}, ${ct.title} at ${companies.get(l.companyId)!.name}`, reason: l.explanation };
       }),
       ...top.map((l, i) => {
         const ct = contacts.get(l.contactId)!;
-        return { stage: 5, msg: `Scored ${ct.name} → ${l.score}/100`, qualified: Math.round(((i + 1) / 3) * q * 0.6) };
+        return { stage: 5, msg: `Scored ${ct.name}: ${l.factors.map((f) => f.points).join(" + ")} = ${l.score}/100`, qualified: Math.min(q, i + 1) };
       }),
-      { stage: 5, msg: `Scored all ${res.stats.discovered} prospects with explainable factors`, qualified: q },
-      { stage: 6, msg: `${q} qualified (70+), ${res.stats.review} need review (50–69), ${res.stats.discovered - q - res.stats.review} not qualified`, qualified: q },
-      { stage: 6, msg: "Queued qualified and borderline prospects for human review" },
-      { stage: 7, msg: `Writing personalised drafts using role, city and signals for ${q} qualified prospects` },
+      { stage: 5, msg: `Scored all ${n} prospects with weights 30 / 20 / 20 / 30`, qualified: q },
+      { stage: 6, msg: `${q} Qualified (75–100), ${res.stats.review} Review (60–74), ${res.stats.lowFit} Low Fit (below 60)`, qualified: q },
+      { stage: 6, msg: "Queued all prospects for human review" },
+      { stage: 7, msg: `Writing personalised drafts for ${q} qualified prospects` },
       { stage: 7, msg: `${res.stats.drafts} outreach drafts ready — nothing is sent automatically` },
     ];
   }, [campaign?.id, campaign?.status]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,6 +102,7 @@ function RunInner({ id }: { id: string }) {
   const visible = events.slice(0, visibleCount);
   const discovered = visible.reduce((a, e) => e.discovered ?? a, 0);
   const qualified = visible.reduce((a, e) => e.qualified ?? a, 0);
+  const enriched = visible.reduce((a, e) => e.enriched ?? a, 0);
   const finished = campaign.status === "complete";
   const currentStage = finished ? STAGES.length : events[visibleCount]?.stage ?? 0;
   const pct = events.length ? Math.round((visibleCount / events.length) * 100) : 0;
@@ -129,10 +132,10 @@ function RunInner({ id }: { id: string }) {
       />
 
       <div className="mb-6 flex items-center gap-2 rounded-md border border-dashed border-warning/50 bg-warning-soft/60 px-3 py-2 text-xs text-warning">
-        <FlaskConical className="h-3.5 w-3.5" /> Simulated demonstration — all processing runs locally on synthetic data. No websites, databases or AI services are contacted.
+        <FlaskConical className="h-3.5 w-3.5" /> Simulated demonstration — all prospects come from the Synthetic Demo Dataset and are processed locally. No websites, databases or AI services are contacted.
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-5">
         <div className="rounded-lg border bg-card p-4 shadow-[var(--shadow-card)] sm:col-span-2">
           <div className="flex items-center justify-between text-xs font-medium text-muted-foreground"><span>Processing progress</span><span className="tabular-nums text-foreground">{pct}%</span></div>
           <Progress value={pct} className="mt-3 h-2" />
@@ -141,6 +144,10 @@ function RunInner({ id }: { id: string }) {
         <div className="rounded-lg border bg-card p-4 shadow-[var(--shadow-card)]">
           <div className="text-xs font-medium text-muted-foreground">Discovered prospects</div>
           <div className="mt-1 font-display text-3xl font-bold tabular-nums">{discovered}</div>
+        </div>
+        <div className="rounded-lg border bg-card p-4 shadow-[var(--shadow-card)]">
+          <div className="text-xs font-medium text-muted-foreground">Enriched prospects</div>
+          <div className="mt-1 font-display text-3xl font-bold tabular-nums">{enriched}</div>
         </div>
         <div className="rounded-lg border bg-card p-4 shadow-[var(--shadow-card)]">
           <div className="text-xs font-medium text-muted-foreground">Qualified prospects</div>

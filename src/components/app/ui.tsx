@@ -40,7 +40,7 @@ export function Stat({ label, value, hint, icon }: { label: string; value: React
 }
 
 export function scoreTone(score: number) {
-  return score >= 70 ? "bg-success-soft text-success" : score >= 50 ? "bg-warning-soft text-warning" : "bg-muted text-muted-foreground";
+  return score >= 75 ? "bg-success-soft text-success" : score >= 60 ? "bg-warning-soft text-warning" : "bg-muted text-muted-foreground";
 }
 
 export function ScoreBadge({ score, className }: { score: number; className?: string }) {
@@ -49,8 +49,8 @@ export function ScoreBadge({ score, className }: { score: number; className?: st
 
 const QUAL: Record<Qualification, string> = {
   Qualified: "bg-success-soft text-success",
-  "Needs review": "bg-warning-soft text-warning",
-  "Not qualified": "bg-muted text-muted-foreground",
+  Review: "bg-warning-soft text-warning",
+  "Low Fit": "bg-muted text-muted-foreground",
 };
 export function QualificationBadge({ value }: { value: Qualification }) {
   return <span className={cn("inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium", QUAL[value])}>{value}</span>;
@@ -74,6 +74,10 @@ const CSTATUS: Record<CampaignStatus, [string, string]> = {
 export function CampaignStatusBadge({ status }: { status: CampaignStatus }) {
   const [label, cls] = CSTATUS[status];
   return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>{status === "running" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />}{label}</span>;
+}
+
+export function SyntheticTag({ compact = false }: { compact?: boolean }) {
+  return <span className="inline-flex whitespace-nowrap rounded border border-dashed border-muted-foreground/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{compact ? "Synthetic" : "Synthetic data"}</span>;
 }
 
 export function DemoTag({ children = "DEMO" }: { children?: ReactNode }) {

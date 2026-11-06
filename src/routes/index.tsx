@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Activity, ArrowRight, Bot, CheckCircle2, FileText, Megaphone, PlayCircle, Plus, Search, UserCheck, Users } from "lucide-react";
+import { Activity, ArrowRight, CircleSlash, Database, Bot, CheckCircle2, FileText, Megaphone, PlayCircle, Plus, Search, UserCheck, Users } from "lucide-react";
 import { useGuide } from "@/components/app/GuidedDemo";
 import { CampaignStatusBadge, Chip, DemoTag, PageHeader, Panel, Stat, pageHead } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
@@ -18,14 +18,18 @@ function Overview() {
   const { start } = useGuide();
   const discovered = campaigns.reduce((a, c) => a + (c.status === "complete" ? c.stats.discovered : 0), 0);
   const qualified = leads.filter((l) => l.qualification === "Qualified").length;
-  const review = leads.filter((l) => l.review === "Pending" && l.qualification !== "Not qualified").length;
+  const enriched = campaigns.reduce((a, c) => a + (c.status === "complete" ? c.stats.enriched : 0), 0);
+  const review = leads.filter((l) => l.qualification === "Review").length;
+  const lowFit = leads.filter((l) => l.qualification === "Low Fit").length;
   const generated = campaigns.reduce((a, c) => a + (c.status === "complete" ? c.stats.drafts : 0), 0);
   const approved = leads.filter((l) => l.review === "Approved").length;
   const reviewed = leads.filter((l) => l.review !== "Pending").length;
   const sample = campaigns.find((c) => c.id === SAMPLE_ID);
   const funnel = [
     { label: "Discovered", value: discovered },
+    { label: "Enriched", value: enriched },
     { label: "Qualified", value: qualified },
+    { label: "Review", value: review },
     { label: "Approved", value: approved },
     { label: "Drafts saved", value: Object.keys(drafts).length },
   ];
@@ -44,11 +48,13 @@ function Overview() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Discovered prospects" value={discovered} hint="Across completed campaigns" icon={<Search className="h-4 w-4" />} />
-        <Stat label="Qualified prospects" value={qualified} hint={`${discovered ? Math.round((qualified / discovered) * 100) : 0}% qualification rate`} icon={<CheckCircle2 className="h-4 w-4" />} />
-        <Stat label="Requiring review" value={review} hint="Qualified or borderline, pending" icon={<Users className="h-4 w-4" />} />
-        <Stat label="Outreach drafts generated" value={generated} hint={`${Object.keys(drafts).length} saved by you`} icon={<FileText className="h-4 w-4" />} />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <Stat label="Discovered prospects" value={discovered} hint="Synthetic Demo Dataset" icon={<Search className="h-4 w-4" />} />
+        <Stat label="Enriched prospects" value={enriched} hint="Profiles completed" icon={<Database className="h-4 w-4" />} />
+        <Stat label="Qualified" value={qualified} hint="Score 75–100" icon={<CheckCircle2 className="h-4 w-4" />} />
+        <Stat label="Requiring review" value={review} hint="Score 60–74" icon={<Users className="h-4 w-4" />} />
+        <Stat label="Low fit" value={lowFit} hint="Score below 60" icon={<CircleSlash className="h-4 w-4" />} />
+        <Stat label="Drafts generated" value={generated} hint={`${Object.keys(drafts).length} saved by you`} icon={<FileText className="h-4 w-4" />} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">

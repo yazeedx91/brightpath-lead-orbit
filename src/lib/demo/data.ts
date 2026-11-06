@@ -1,15 +1,4 @@
-import type { Company, Contact, Dataset, Seniority, Signal, SignalType } from "./types";
-
-export function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { DATA_SOURCE, type Company, type Contact, type Dataset, type PresetScore, type Seniority } from "./types";
 
 export const INDUSTRIES = [
   "Logistics and Supply Chain",
@@ -18,18 +7,13 @@ export const INDUSTRIES = [
   "Construction",
   "Fintech",
   "Healthcare",
-  "Cybersecurity",
-  "Education",
 ];
 
 export const COUNTRIES: Record<string, string[]> = {
-  "Saudi Arabia": ["Riyadh", "Jeddah", "Dammam", "Khobar", "Mecca"],
+  "Saudi Arabia": ["Riyadh", "Jeddah", "Dammam", "Khobar", "Mecca", "Medina", "Tabuk"],
   "United Arab Emirates": ["Dubai", "Abu Dhabi", "Sharjah"],
   Qatar: ["Doha"],
   Egypt: ["Cairo", "Alexandria"],
-  "United Kingdom": ["London", "Manchester"],
-  Germany: ["Berlin", "Hamburg"],
-  "United States": ["Austin", "Chicago"],
 };
 
 export const SIZE_PRESETS: { label: string; min: number; max: number }[] = [
@@ -45,11 +29,9 @@ export const POSITION_SUGGESTIONS = [
   "Supply Chain Director",
   "Fleet Manager",
   "Logistics Manager",
-  "Chief Executive Officer",
-  "Chief Financial Officer",
+  "Warehouse Manager",
   "Procurement Manager",
-  "IT Director",
-  "Sales Director",
+  "Chief Executive Officer",
 ];
 
 export const OBJECTIVES = [
@@ -59,151 +41,165 @@ export const OBJECTIVES = [
   "Find channel partners",
 ];
 
-export const SIGNAL_TYPES: SignalType[] = ["Hiring", "Funding", "Expansion", "New executive", "Tech change"];
+export function sizeCategory(employees: number) {
+  if (employees < 50) return "Small (under 50)";
+  if (employees <= 500) return "Mid-market (50–500)";
+  return "Upper mid-market (500+)";
+}
 
-const TITLE_META: Record<string, { seniority: Seniority; department: string }> = {
-  "Chief Executive Officer": { seniority: "C-Level", department: "Executive" },
-  "Chief Operating Officer": { seniority: "C-Level", department: "Operations" },
-  "Chief Financial Officer": { seniority: "C-Level", department: "Finance" },
-  "Operations Director": { seniority: "Director", department: "Operations" },
-  "Supply Chain Director": { seniority: "Director", department: "Operations" },
-  "Fleet Manager": { seniority: "Manager", department: "Operations" },
-  "Logistics Manager": { seniority: "Manager", department: "Operations" },
-  "Procurement Manager": { seniority: "Manager", department: "Finance" },
-  "IT Director": { seniority: "Director", department: "Technology" },
-  "Sales Director": { seniority: "Director", department: "Sales" },
-  "HR Manager": { seniority: "Manager", department: "People" },
-  "Marketing Manager": { seniority: "Manager", department: "Marketing" },
-  "Business Analyst": { seniority: "Individual", department: "Operations" },
-};
-const LOGISTICS_TITLES = ["Chief Operating Officer", "Operations Director", "Supply Chain Director", "Fleet Manager", "Logistics Manager", "Chief Financial Officer", "Procurement Manager", "IT Director", "HR Manager", "Chief Executive Officer"];
-const GENERAL_TITLES = Object.keys(TITLE_META);
+interface Row {
+  prospectId: string;
+  name: string;
+  slug: string;
+  sector: string;
+  city: string;
+  employees: number;
+  revenueM: number;
+  founded: number;
+  description: string;
+  contextNote: string;
+  person: string;
+  title: string;
+  seniority: Seniority;
+  tenureMonths: number;
+  preset: PresetScore;
+}
 
-const SA_PREFIX = ["Najd", "Tihama", "Qafilah", "Marsa", "Wadi", "Fanar", "Hijaz", "Durrah", "Sarab", "Nakheel", "Raha", "Sahm", "Bayan", "Masar", "Thuraya", "Afaq", "Jazl", "Nawaf", "Sadeem", "Rimal"];
-const SA_SUFFIX = ["Logistics", "Freight", "Transport", "Fleet Services", "Cargo", "Supply Chain Co."];
-const GEN_PREFIX = ["Nova", "Helix", "Brightline", "Cobalt", "Lumen", "Quarry", "Atlas", "Verity", "Kestrel", "Orbit", "Tidal", "Summit", "Ember", "Granite", "Harbor", "Prism", "Sable", "Vantage", "Willow", "Zenith"];
-const GEN_SUFFIX: Record<string, string[]> = {
-  "Logistics and Supply Chain": ["Freight", "Logistics", "Cargo"],
-  Manufacturing: ["Industries", "Works", "Fabrication"],
-  "Retail and E-commerce": ["Commerce", "Retail", "Market"],
-  Construction: ["Builders", "Contracting", "Construct"],
-  Fintech: ["Pay", "Capital", "Ledger"],
-  Healthcare: ["Health", "Care", "Medical"],
-  Cybersecurity: ["Shield", "Secure", "Guard"],
-  Education: ["Learning", "Academy", "Edu"],
-};
-const AR_FIRST = ["Faisal", "Noura", "Abdullah", "Reem", "Khalid", "Sara", "Turki", "Lama", "Majed", "Hessa", "Omar", "Dana", "Yazeed", "Maha", "Saad", "Alanoud", "Fahad", "Jawaher", "Nasser", "Rawan"];
-const AR_LAST = ["Al-Harbi", "Al-Qahtani", "Al-Mutairi", "Al-Dossary", "Al-Shehri", "Al-Ghamdi", "Al-Zahrani", "Al-Otaibi", "Al-Subaie", "Al-Anazi", "Al-Shammari", "Al-Malki"];
-const EN_FIRST = ["Daniel", "Sofia", "Elena", "James", "Marcus", "Priya", "Lucas", "Hannah", "Kenji", "Oliver", "Mateo", "Grace", "Clara", "Amira", "Leila", "Noah"];
-const EN_LAST = ["Fischer", "Okafor", "Lindqvist", "Moreau", "Tanaka", "Costa", "Novak", "Brennan", "Kowalski", "Reyes", "Iyer", "Walsh", "Berg", "Haddad"];
-const TECH = ["SAP", "Oracle", "Salesforce", "Microsoft Dynamics", "Odoo", "AWS", "Azure", "HubSpot", "Power BI", "Excel-based planning"];
-const FUNDING = ["Bootstrapped", "Family-owned", "Series A", "Series B", "Private equity", "Public"];
-const SIGNAL_DETAIL: Record<SignalType, string[]> = {
-  Hiring: ["is hiring 8 fleet coordinators", "opened 5 operations roles", "is expanding its dispatch team"],
-  Funding: ["raised new growth financing", "closed a SAR 60M funding round", "secured investment for fleet expansion"],
-  Expansion: ["opened a new distribution centre", "launched a new regional hub", "added 120 vehicles to its fleet"],
-  "New executive": ["appointed a new COO", "hired a new Supply Chain Director", "named a new CEO"],
-  "Tech change": ["is replacing manual route planning", "announced an ERP migration", "started a digital transformation programme"],
-};
-
-const pick = <T,>(r: () => number, arr: T[]): T => arr[Math.floor(r() * arr.length)]!;
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+const ROWS: Row[] = [
+  {
+    prospectId: "PX-001", name: "DuneBridge Logistics", slug: "dunebridgelogistics", sector: "Logistics", city: "Riyadh", employees: 240, revenueM: 38, founded: 2009,
+    description: "Fictional third-party logistics provider running a 90-vehicle fleet for retail and FMCG clients across central Saudi Arabia.",
+    contextNote: "is expanding last-mile delivery coverage across Riyadh",
+    person: "Faisal Al-Harbi", title: "Chief Operating Officer", seniority: "C-Level", tenureMonths: 7,
+    preset: { industry: 30, geography: 20, size: 18, decisionMaker: 28,
+      explanation: "Core logistics operator in a target city, well inside the 50–500 employee range, with the COO as the primary operations decision-maker.",
+      nextAction: { title: "Book discovery call with COO", detail: "Approve the lead and send the personalised intro focused on route planning efficiency." } },
+  },
+  {
+    prospectId: "PX-002", name: "PalmRoute Distribution", slug: "palmroutedistribution", sector: "Distribution", city: "Jeddah", employees: 180, revenueM: 27, founded: 2012,
+    description: "Fictional regional distributor moving food and consumer goods from Jeddah port to retailers in the western region.",
+    contextNote: "is adding a second distribution shift to handle port volumes",
+    person: "Noura Al-Qahtani", title: "Operations Director", seniority: "Director", tenureMonths: 22,
+    preset: { industry: 28, geography: 20, size: 18, decisionMaker: 27,
+      explanation: "Distribution company in Jeddah with an ideal size and an Operations Director who owns dispatch and fleet workflows.",
+      nextAction: { title: "Book discovery call with Operations Director", detail: "Approve and send an intro about dispatch scheduling across shifts." } },
+  },
+  {
+    prospectId: "PX-003", name: "CedarLine Freight", slug: "cedarlinefreight", sector: "Freight", city: "Dammam", employees: 320, revenueM: 52, founded: 2006,
+    description: "Fictional freight forwarder serving industrial and petrochemical customers from the Eastern Province.",
+    contextNote: "is consolidating freight planning across its Dammam and Jubail yards",
+    person: "Khalid Al-Dossary", title: "Supply Chain Director", seniority: "Director", tenureMonths: 15,
+    preset: { industry: 27, geography: 20, size: 16, decisionMaker: 27,
+      explanation: "Freight operator in Dammam within the size range; the Supply Chain Director is a named target position.",
+      nextAction: { title: "Book discovery call with Supply Chain Director", detail: "Approve and lead with multi-site planning visibility." } },
+  },
+  {
+    prospectId: "PX-004", name: "WadiFlow Warehousing", slug: "wadiflowwarehousing", sector: "Warehousing", city: "Riyadh", employees: 140, revenueM: 19, founded: 2015,
+    description: "Fictional contract warehousing company operating three bonded warehouses with outbound delivery services.",
+    contextNote: "is linking warehouse dispatch with its own delivery vans",
+    person: "Reem Al-Shehri", title: "Operations Director", seniority: "Director", tenureMonths: 30,
+    preset: { industry: 25, geography: 20, size: 17, decisionMaker: 25,
+      explanation: "Warehousing operator with in-house delivery in Riyadh; strong location and size fit, slightly lower industry relevance than pure logistics.",
+      nextAction: { title: "Send personalised intro", detail: "Approve and position the warehouse-to-delivery workflow use case." } },
+  },
+  {
+    prospectId: "PX-005", name: "AtlasGate Transport", slug: "atlasgatetransport", sector: "Transportation", city: "Jeddah", employees: 410, revenueM: 61, founded: 2004,
+    description: "Fictional road transport company running long-haul trucking between Jeddah, Riyadh and Dammam.",
+    contextNote: "is modernising driver scheduling for its long-haul routes",
+    person: "Turki Al-Mutairi", title: "Fleet Manager", seniority: "Manager", tenureMonths: 11,
+    preset: { industry: 27, geography: 20, size: 14, decisionMaker: 23,
+      explanation: "Large fleet in a target city; size is near the top of the range and the Fleet Manager influences but may not sign the purchase.",
+      nextAction: { title: "Send intro to Fleet Manager", detail: "Approve, then ask to involve the operations leadership in a demo." } },
+  },
+  {
+    prospectId: "PX-006", name: "RedDune Supply Chain", slug: "reddunesupplychain", sector: "Logistics", city: "Dammam", employees: 95, revenueM: 12, founded: 2017,
+    description: "Fictional supply chain services firm managing inbound logistics for manufacturers in the Eastern Province.",
+    contextNote: "recently took on two new manufacturing clients",
+    person: "Lama Al-Ghamdi", title: "Supply Chain Director", seniority: "Director", tenureMonths: 5,
+    preset: { industry: 26, geography: 20, size: 12, decisionMaker: 24,
+      explanation: "Relevant supply chain operator in Dammam with a target-role contact; smaller size lowers the size suitability score.",
+      nextAction: { title: "Send personalised intro", detail: "Approve and emphasise quick setup for a growing team." } },
+  },
+  {
+    prospectId: "PX-007", name: "GulfSpan Cold Chain", slug: "gulfspancoldchain", sector: "Cold Chain", city: "Khobar", employees: 260, revenueM: 44, founded: 2011,
+    description: "Fictional temperature-controlled logistics provider serving pharmacies and food retailers.",
+    contextNote: "is extending refrigerated delivery to new Eastern Province routes",
+    person: "Majed Al-Zahrani", title: "Chief Operating Officer", seniority: "C-Level", tenureMonths: 19,
+    preset: { industry: 24, geography: 14, size: 16, decisionMaker: 26,
+      explanation: "Cold chain operator with a COO contact and good size; Khobar is near but outside the three target cities.",
+      nextAction: { title: "Book discovery call with COO", detail: "Approve and tailor the message to cold chain route compliance." } },
+  },
+  {
+    prospectId: "PX-008", name: "NexaCargo Arabia", slug: "nexacargoarabia", sector: "Freight", city: "Riyadh", employees: 480, revenueM: 73, founded: 2008,
+    description: "Fictional cargo and courier company with a mixed fleet of vans and heavy trucks.",
+    contextNote: "is reviewing how it plans daily courier routes",
+    person: "Hessa Al-Otaibi", title: "Fleet Manager", seniority: "Manager", tenureMonths: 40,
+    preset: { industry: 25, geography: 20, size: 12, decisionMaker: 21,
+      explanation: "Relevant cargo operator in Riyadh at the upper edge of the size range; Fleet Manager is a target role with partial buying authority.",
+      nextAction: { title: "Send intro to Fleet Manager", detail: "Approve and offer a short route-planning walkthrough." } },
+  },
+  {
+    prospectId: "PX-009", name: "Sandstone Distribution", slug: "sandstonedistribution", sector: "Distribution", city: "Mecca", employees: 120, revenueM: 15, founded: 2014,
+    description: "Fictional distributor supplying hospitality and retail businesses in the Mecca region.",
+    contextNote: "handles seasonal peaks during pilgrimage periods",
+    person: "Omar Al-Subaie", title: "Logistics Manager", seniority: "Manager", tenureMonths: 26,
+    preset: { industry: 22, geography: 12, size: 16, decisionMaker: 22,
+      explanation: "Good size and relevant sector, but Mecca is outside the target cities and Logistics Manager is adjacent to, not one of, the target roles.",
+      nextAction: { title: "Confirm decision authority before outreach", detail: "Check who owns fleet decisions, then approve or save for later." } },
+  },
+  {
+    prospectId: "PX-010", name: "RouteCraft Logistics", slug: "routecraftlogistics", sector: "Logistics", city: "Jeddah", employees: 650, revenueM: 96, founded: 2001,
+    description: "Fictional integrated logistics group with warehousing, freight and customs brokerage units.",
+    contextNote: "runs a central procurement process for operational software",
+    person: "Dana Al-Anazi", title: "Procurement Manager", seniority: "Manager", tenureMonths: 14,
+    preset: { industry: 26, geography: 20, size: 8, decisionMaker: 14,
+      explanation: "Relevant and in a target city, but above the 500-employee limit and the contact is in procurement rather than operations.",
+      nextAction: { title: "Find an operations contact", detail: "Review manually; identify a COO or Operations Director before outreach." } },
+  },
+  {
+    prospectId: "PX-011", name: "Saffron Peak Warehousing", slug: "saffronpeakwarehousing", sector: "Warehousing", city: "Medina", employees: 70, revenueM: 8, founded: 2018,
+    description: "Fictional storage and fulfilment provider for e-commerce sellers in Medina.",
+    contextNote: "is starting to offer same-day local deliveries",
+    person: "Yazeed Al-Shammari", title: "Warehouse Manager", seniority: "Manager", tenureMonths: 9,
+    preset: { industry: 20, geography: 10, size: 14, decisionMaker: 20,
+      explanation: "Small warehousing operator outside the target cities; the Warehouse Manager has limited influence over fleet software.",
+      nextAction: { title: "Save for nurture", detail: "Save the lead and revisit when its delivery operation grows." } },
+  },
+  {
+    prospectId: "PX-012", name: "HarborNest Freight", slug: "harbornestfreight", sector: "Freight", city: "Tabuk", employees: 35, revenueM: 4, founded: 2020,
+    description: "Fictional small freight agent arranging subcontracted trucking in the north-west.",
+    contextNote: "subcontracts most of its trucking to third parties",
+    person: "Maha Al-Malki", title: "Finance Manager", seniority: "Manager", tenureMonths: 33,
+    preset: { industry: 18, geography: 8, size: 6, decisionMaker: 20,
+      explanation: "Below the size range, outside the target cities, does not run its own fleet, and the contact is not an operations decision-maker.",
+      nextAction: { title: "Do not contact now; revisit in 90 days", detail: "Low fit for fleet software today." } },
+  },
+];
 
 let cached: Dataset | null = null;
 
-/** Deterministic synthetic dataset. Built lazily (never at module scope). */
+/** The fixed 12-record Synthetic Demo Dataset. No randomness. */
 export function getDataset(): Dataset {
   if (cached) return cached;
-  const r = mulberry32(20261107);
   const companies: Company[] = [];
   const contacts: Contact[] = [];
-  const usedNames = new Set<string>();
-  const usedPeople = new Set<string>();
-
-  const addCompany = (opts: { saudiLogistics: boolean }) => {
-    let name = "";
-    for (let k = 0; k < 50 && (!name || usedNames.has(name)); k++) {
-      if (opts.saudiLogistics) name = `${pick(r, SA_PREFIX)} ${pick(r, SA_SUFFIX)}`;
-      else name = "";
-    }
-    let industry: string;
-    let country: string;
-    let city: string;
-    if (opts.saudiLogistics) {
-      industry = "Logistics and Supply Chain";
-      country = "Saudi Arabia";
-      const roll = r();
-      city = roll < 0.4 ? "Riyadh" : roll < 0.7 ? "Jeddah" : roll < 0.9 ? "Dammam" : "Khobar";
-    } else {
-      industry = pick(r, INDUSTRIES);
-      country = pick(r, Object.keys(COUNTRIES));
-      city = pick(r, COUNTRIES[country]!);
-      for (let k = 0; k < 50 && (!name || usedNames.has(name)); k++) name = `${pick(r, GEN_PREFIX)} ${pick(r, GEN_SUFFIX[industry]!)}`;
-    }
-    if (usedNames.has(name)) return;
-    usedNames.add(name);
-    const employees = opts.saudiLogistics ? Math.round(25 + Math.pow(r(), 1.3) * 900) : Math.round(15 + Math.pow(r(), 1.6) * 4000);
-    const revenueM = Math.max(1, Math.round(employees * (0.08 + r() * 0.12)));
-    const signals: Signal[] = [];
-    const nSignals = Math.floor(r() * 4);
-    for (let s = 0; s < nSignals; s++) {
-      const type = pick(r, SIGNAL_TYPES);
-      if (signals.some((x) => x.type === type)) continue;
-      signals.push({ type, detail: pick(r, SIGNAL_DETAIL[type]), daysAgo: 3 + Math.floor(r() * 150) });
-    }
-    const id = `co-${String(companies.length + 1).padStart(3, "0")}`;
-    const domain = `${slug(name)}.example`;
+  ROWS.forEach((r, i) => {
+    const id = `co-${String(i + 1).padStart(2, "0")}`;
+    const domain = `${r.slug}.example`;
     companies.push({
-      id,
-      name,
-      website: `https://www.${domain}`,
-      industry,
-      employees,
-      revenueM,
-      country,
-      city,
-      techStack: Array.from(new Set([pick(r, TECH), pick(r, TECH)])),
-      fundingStage: pick(r, FUNDING),
-      founded: 1985 + Math.floor(r() * 37),
-      signals,
-      description:
-        industry === "Logistics and Supply Chain"
-          ? `${name} is a fictional ${city}-based logistics provider operating ${Math.round(employees / 4)} vehicles across ${country}, serving retail, FMCG and industrial clients.`
-          : `${name} is a fictional ${industry.toLowerCase()} company headquartered in ${city}, ${country}.`,
+      id, prospectId: r.prospectId, name: r.name, website: `www.${domain}`, sector: r.sector, industry: "Logistics and Supply Chain",
+      employees: r.employees, sizeCategory: sizeCategory(r.employees), revenueM: r.revenueM, country: "Saudi Arabia", city: r.city,
+      founded: r.founded, description: r.description, contextNote: r.contextNote, source: DATA_SOURCE, preset: r.preset,
     });
-    const arabic = country === "Saudi Arabia" || country === "United Arab Emirates" || country === "Qatar" || country === "Egypt";
-    const titles = industry === "Logistics and Supply Chain" ? LOGISTICS_TITLES : GENERAL_TITLES;
-    const nContacts = 2 + Math.floor(r() * 2);
-    const usedTitles = new Set<string>();
-    for (let c = 0; c < nContacts; c++) {
-      const title = pick(r, titles);
-      if (usedTitles.has(title)) continue;
-      usedTitles.add(title);
-      let first = "";
-      let last = "";
-      for (let k = 0; k < 20 && (!first || usedPeople.has(`${first} ${last}`)); k++) {
-        first = pick(r, arabic ? AR_FIRST : EN_FIRST);
-        last = pick(r, arabic ? AR_LAST : EN_LAST);
-      }
-      usedPeople.add(`${first} ${last}`);
-      const meta = TITLE_META[title]!;
-      const tenureMonths = 1 + Math.floor(r() * 72);
-      contacts.push({
-        id: `ct-${String(contacts.length + 1).padStart(3, "0")}`,
-        companyId: id,
-        name: `${first} ${last}`,
-        title,
-        seniority: meta.seniority,
-        department: meta.department,
-        tenureMonths,
-        email: `${first.toLowerCase()}.${slug(last)}@${domain}`,
-        summary: `${title} at ${name} for ${tenureMonths} months, responsible for ${meta.department.toLowerCase()} performance in ${city}.`,
-      });
-    }
-  };
-
-  for (let i = 0; i < 42; i++) addCompany({ saudiLogistics: true });
-  for (let i = 0; i < 110; i++) addCompany({ saudiLogistics: false });
+    const [first = "", ...rest] = r.person.split(" ");
+    const last = rest.join("").toLowerCase().replace(/[^a-z]/g, "");
+    contacts.push({
+      id: `ct-${String(i + 1).padStart(2, "0")}`, companyId: id, name: r.person, title: r.title, seniority: r.seniority,
+      department: /finance|procurement/i.test(r.title) ? "Finance" : "Operations", tenureMonths: r.tenureMonths,
+      email: `${first.toLowerCase()}.${last}@${domain}`,
+      summary: `Fictional ${r.title} at ${r.name} (${r.city}), ${r.tenureMonths} months in role.`,
+    });
+  });
   cached = { companies, contacts };
   return cached;
 }

@@ -30,7 +30,7 @@ function isActive(path: string, to: string) {
 function AppSidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { leads } = useDemo();
-  const pending = leads.filter((l) => l.review === "Pending" && l.qualification !== "Not qualified").length;
+  const pending = leads.filter((l) => l.review === "Pending" && l.qualification !== "Low Fit").length;
   return (
     <Sidebar collapsible="icon" className="top-14 h-[calc(100svh-3.5rem)]">
       <SidebarContent className="pt-3">
