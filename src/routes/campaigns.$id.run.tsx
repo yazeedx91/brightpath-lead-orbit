@@ -1,9 +1,9 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import {
-  Brain, Building2, Calculator, CheckCircle2, ClipboardCheck, FastForward, FileText, Loader2, Pause, Play, Search, Target, UserSearch, RotateCcw, FlaskConical,
+  Brain, Building2, Calculator, CheckCircle2, ClipboardCheck, FastForward, Loader2, Pause, Play, Search, Target, UserSearch, RotateCcw, FlaskConical,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CampaignStatusBadge, Chip, PageHeader, Panel, pageHead } from "@/components/app/ui";
+import { CampaignStatusBadge, Chip, ReviewBadge, PageHeader, Panel, pageHead } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { getDataset } from "@/lib/demo/data";
@@ -17,14 +17,13 @@ export const Route = createFileRoute("/campaigns/$id/run")({
 });
 
 const STAGES = [
-  { label: "Understanding campaign requirements", icon: Target },
-  { label: "Discovering target companies", icon: Search },
-  { label: "Identifying decision-makers", icon: UserSearch },
-  { label: "Enriching prospect information", icon: Building2 },
-  { label: "Evaluating prospect relevance", icon: Brain },
-  { label: "Calculating lead scores", icon: Calculator },
-  { label: "Preparing qualified leads", icon: ClipboardCheck },
-  { label: "Generating outreach drafts", icon: FileText },
+  { label: () => "Validating campaign profile", icon: Target },
+  { label: (n: number) => `Discovering ${n} synthetic companies`, icon: Search },
+  { label: (n: number) => `Identifying ${n} fictional decision-makers`, icon: UserSearch },
+  { label: () => "Completing simulated enrichment", icon: Building2 },
+  { label: () => "Evaluating qualification criteria", icon: Brain },
+  { label: () => "Calculating lead scores", icon: Calculator },
+  { label: () => "Compiling the final prospect list", icon: ClipboardCheck },
 ];
 
 interface Ev { stage: number; msg: string; reason?: string; discovered?: number; enriched?: number; qualified?: number }
@@ -37,7 +36,7 @@ function Run() {
 }
 
 function RunInner({ id }: { id: string }) {
-  const { campaigns, completeCampaign, runCampaign, companies, contacts } = useDemo();
+  const { campaigns, completeCampaign, runCampaign, companies, contacts, leads } = useDemo();
   const campaign = campaigns.find((c) => c.id === id);
 
   const events = useMemo<Ev[]>(() => {
@@ -72,8 +71,8 @@ function RunInner({ id }: { id: string }) {
       { stage: 5, msg: `Scored all ${n} prospects with weights 30 / 20 / 20 / 30`, qualified: q },
       { stage: 6, msg: `${q} Qualified (75–100), ${res.stats.review} Review (60–74), ${res.stats.lowFit} Low Fit (below 60)`, qualified: q },
       { stage: 6, msg: "Queued all prospects for human review" },
-      { stage: 7, msg: `Writing personalised drafts for ${q} qualified prospects` },
-      { stage: 7, msg: `${res.stats.drafts} outreach drafts ready — nothing is sent automatically` },
+      { stage: 6, msg: `Writing personalised drafts for ${q} qualified prospects` },
+      { stage: 6, msg: `${res.stats.drafts} outreach drafts ready — nothing is sent automatically` },
     ];
   }, [campaign?.id, campaign?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -86,7 +85,7 @@ function RunInner({ id }: { id: string }) {
 
   useEffect(() => {
     if (!running || paused || shown >= events.length) return;
-    const t = setTimeout(() => setShown((s) => s + 1), 1000 / speed);
+    const t = setTimeout(() => setShown((s) => s + 1), 500 / speed);
     return () => clearTimeout(t);
   }, [shown, paused, speed, events.length, running]);
 
@@ -104,6 +103,9 @@ function RunInner({ id }: { id: string }) {
   const qualified = visible.reduce((a, e) => e.qualified ?? a, 0);
   const enriched = visible.reduce((a, e) => e.enriched ?? a, 0);
   const finished = campaign.status === "complete";
+  const total = getDataset().companies.length;
+  const stageLabel = (i: number) => STAGES[i]?.label(total);
+  const campaignLeads = leads.filter((l) => l.campaignId === id && l.qualification === "Qualified").sort((a, b) => b.score - a.score);
   const currentStage = finished ? STAGES.length : events[visibleCount]?.stage ?? 0;
   const pct = events.length ? Math.round((visibleCount / events.length) * 100) : 0;
   const current = finished ? null : events[visibleCount];
@@ -166,7 +168,7 @@ function RunInner({ id }: { id: string }) {
             ) : (
               <>
                 <div className="mt-2 flex items-center gap-2 font-medium">
-                  <Loader2 className={cn("h-4 w-4 text-primary", !paused && "animate-spin")} />{STAGES[currentStage]?.label}
+                  <Loader2 className={cn("h-4 w-4 text-primary", !paused && "animate-spin")} />{stageLabel(currentStage)}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">{paused ? "Paused" : current?.msg ?? "…"}</div>
               </>
@@ -177,9 +179,9 @@ function RunInner({ id }: { id: string }) {
               {STAGES.map((s, i) => {
                 const state = isDraft ? "todo" : i < currentStage ? "done" : i === currentStage ? "active" : "todo";
                 return (
-                  <li key={s.label} className={cn("flex items-center gap-3 rounded-md px-2 py-2 text-sm", state === "active" && "bg-accent")}>
+                  <li key={i} className={cn("flex items-center gap-3 rounded-md px-2 py-2 text-sm", state === "active" && "bg-accent")}>
                     {state === "done" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-success" /> : state === "active" ? <Loader2 className={cn("h-4 w-4 shrink-0 text-primary", !paused && "animate-spin")} /> : <s.icon className="h-4 w-4 shrink-0 text-muted-foreground/50" />}
-                    <span className={cn(state === "todo" && "text-muted-foreground", state === "active" && "font-medium text-accent-foreground")}>{s.label}</span>
+                    <span className={cn(state === "todo" && "text-muted-foreground", state === "active" && "font-medium text-accent-foreground")}>{s.label(total)}</span>
                   </li>
                 );
               })}
@@ -200,7 +202,7 @@ function RunInner({ id }: { id: string }) {
                 return (
                   <li key={i} className="animate-in fade-in slide-in-from-bottom-1 duration-300">
                     <span className={cn("absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full border-2 border-card", firstOfStage ? "bg-primary" : "bg-border")} />
-                    {firstOfStage && <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-primary">{STAGES[e.stage]?.label}</div>}
+                    {firstOfStage && <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-primary">{stageLabel(e.stage)}</div>}
                     <div className="flex gap-3 text-sm">
                       <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">00:{String(i * 2).padStart(2, "0")}</span>
                       <span>{e.msg}</span>
@@ -213,6 +215,30 @@ function RunInner({ id }: { id: string }) {
           </div>
         </Panel>
       </div>
+
+      {finished && (
+        <Panel title={`Qualified prospects (${campaignLeads.length})`} className="mt-6" action={<Button size="sm" variant="outline" asChild><Link to="/leads" search={{ campaign: id }}>Review all leads</Link></Button>}>
+          {campaignLeads.length === 0 ? <p className="text-sm text-muted-foreground">No prospects reached the Qualified threshold.</p> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2 pr-3 font-medium">Prospect</th><th className="py-2 pr-3 font-medium">Company</th><th className="py-2 pr-3 font-medium">Title</th><th className="py-2 pr-3 font-medium">Score</th><th className="py-2 pr-3 font-medium">Status</th><th /></tr></thead>
+                <tbody>
+                  {campaignLeads.map((l) => {
+                    const ct = contacts.get(l.contactId)!; const co = companies.get(l.companyId)!;
+                    return (
+                      <tr key={l.id} className="border-b last:border-0">
+                        <td className="py-2 pr-3 font-medium">{ct.name}</td><td className="py-2 pr-3">{co.name}</td><td className="py-2 pr-3 text-muted-foreground">{ct.title}</td>
+                        <td className="py-2 pr-3 font-semibold tabular-nums">{l.score}</td><td className="py-2 pr-3"><ReviewBadge value={l.review} /></td>
+                        <td className="py-2 text-right"><Link to="/leads/$id" params={{ id: l.id }} className="text-xs font-medium text-primary">View profile</Link></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+      )}
     </>
   );
 }

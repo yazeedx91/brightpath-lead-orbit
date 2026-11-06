@@ -64,4 +64,10 @@ describe("synthetic dataset and scoring", () => {
     expect(nextAction({ qualification: "Qualified", review: "Approved", recommendation: rec }).title).toBe("Send personalised intro");
     expect(nextAction({ qualification: "Qualified", review: "Rejected", recommendation: rec }).title).toBe("No further action");
   });
+  it("sample run is reproducible: identical results on every run", () => {
+    const a = runPipeline("c1", SAMPLE_CAMPAIGN, getDataset());
+    const b = runPipeline("c1", SAMPLE_CAMPAIGN, getDataset());
+    expect(a.leads.map((l) => [l.id, l.score])).toEqual(b.leads.map((l) => [l.id, l.score]));
+    expect(a.stats).toMatchObject({ discovered: 12, qualified: 8, review: 3, lowFit: 1, drafts: 8 });
+  });
 });

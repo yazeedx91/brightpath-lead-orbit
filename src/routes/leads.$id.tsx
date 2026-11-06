@@ -1,11 +1,14 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, ArrowLeft, Bookmark, Building2, Check, CheckCircle2, Globe, Mail, MapPin, Send, Users, X, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, RefreshCw, Save, Sparkles, AlertTriangle, ArrowLeft, Bookmark, Building2, Check, CheckCircle2, Globe, Mail, MapPin, Send, Users, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, Chip, Panel, QualificationBadge, ReviewBadge, SyntheticTag, pageHead, scoreTone } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { nextAction, selectionReasons } from "@/lib/demo/engine";
-import { useDemo } from "@/lib/demo/store";
-import type { ReviewStatus } from "@/lib/demo/types";
+import { formatTime, useDemo } from "@/lib/demo/store";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import type { ReviewStatus, Tone } from "@/lib/demo/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/leads/$id")({
@@ -55,9 +58,11 @@ function LeadProfile() {
               <div className="mt-2 text-lg font-bold">{action.title}</div>
               <p className="mt-1 text-sm text-muted-foreground">{action.detail}</p>
               <div className="mt-3 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Qualification: </span>{lead.explanation}</div>
-              {lead.review !== "Rejected" && <Button size="sm" className="mt-4" asChild><Link to="/outreach" search={{ lead: lead.id }}><Send className="h-3.5 w-3.5" /> Open in Outreach</Link></Button>}
+              {lead.review !== "Rejected" && <Button size="sm" variant="outline" className="mt-4" asChild><Link to="/outreach" search={{ lead: lead.id }}><Send className="h-3.5 w-3.5" /> Open in Outreach</Link></Button>}
             </div>
           </div>
+
+          {lead.qualification !== "Low Fit" && lead.review !== "Rejected" && <OutreachPanel key={lead.id} leadId={lead.id} />}
 
           <Panel title="Score breakdown" action={<span className="text-xs text-muted-foreground">Weights 30 / 20 / 20 / 30</span>}>
             <div className="mb-5 flex h-2.5 overflow-hidden rounded-full bg-muted">
@@ -136,5 +141,49 @@ function Row({ icon: Icon, k, v }: { icon: typeof Mail; k: string; v: string }) 
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0"><dt className="text-xs text-muted-foreground">{k}</dt><dd className="break-words">{v}</dd></div>
     </div>
+  );
+}
+
+function OutreachPanel({ leadId }: { leadId: string }) {
+  const { drafts, buildDraft, saveDraft } = useDemo();
+  const saved = drafts[leadId];
+  const [subject, setSubject] = useState(saved?.subject ?? "");
+  const [body, setBody] = useState(saved?.body ?? "");
+  const [meta, setMeta] = useState({ tone: saved?.tone ?? ("friendly" as Tone), variant: saved?.variant ?? 0 });
+  useEffect(() => {
+    if (saved && !subject && !body) { setSubject(saved.subject); setBody(saved.body); setMeta({ tone: saved.tone, variant: saved.variant }); }
+  }, [saved]); // eslint-disable-line react-hooks/exhaustive-deps
+  const has = !!subject || !!body;
+  const generate = () => {
+    const v = has ? meta.variant + 1 : meta.variant;
+    const d = buildDraft(leadId, meta.tone, v);
+    if (!d) return;
+    setSubject(d.subject); setBody(d.body); setMeta({ tone: d.tone, variant: d.variant });
+  };
+  const onSave = () => { saveDraft({ leadId, tone: meta.tone, variant: meta.variant, subject, body }); toast.success("Draft saved"); };
+  const onCopy = async () => {
+    try { await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`); toast.success("Draft copied to clipboard"); }
+    catch { toast.error("Copy failed — select the text and copy manually"); }
+  };
+  return (
+    <Panel title="Outreach draft" action={<span className="text-xs text-muted-foreground">Not sent: demo only</span>}>
+      {!has ? (
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-sm text-muted-foreground">Write a personalised email using this prospect's name, title, company, industry, the fictional company context and your offering.</p>
+          <Button onClick={generate}><Sparkles className="h-4 w-4" /> Generate Outreach</Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <Input value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="Subject" />
+          <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={12} aria-label="Email body" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={generate}><RefreshCw className="h-4 w-4" /> Regenerate</Button>
+            <Button variant="outline" onClick={onCopy}><Copy className="h-4 w-4" /> Copy draft</Button>
+            <Button onClick={onSave} disabled={!subject.trim() || !body.trim()}><Save className="h-4 w-4" /> Save draft</Button>
+            {saved && <span className="ml-auto text-xs text-muted-foreground">Saved {formatTime(saved.savedAt)}</span>}
+          </div>
+        </div>
+      )}
+    </Panel>
   );
 }
