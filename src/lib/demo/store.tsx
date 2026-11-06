@@ -1,61 +1,94 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getDataset } from "./data";
-import { generateDraft, interpretICP, runPipeline } from "./engine";
-import type { Campaign, Company, Contact, Draft, ICP, Lead, LeadStatus, Tone } from "./types";
+import { SAMPLE_CAMPAIGN, generateDraft, runPipeline } from "./engine";
+import type { ActivityEvent, Campaign, CampaignInput, Company, Contact, Draft, Lead, ReviewStatus, Tone } from "./types";
 
 interface State {
   campaigns: Campaign[];
   leads: Lead[];
   drafts: Record<string, Draft>;
+  events: ActivityEvent[];
+  activeCampaignId: string | null;
+  guideStep: number | null;
 }
 
-const STORAGE_KEY = "projectx-demo-v2";
-
-const SEED_STATUSES: LeadStatus[] = ["meeting", "replied", "contacted", "contacted", "approved", "qualified", "replied", "contacted", "qualified", "rejected"];
+const STORAGE_KEY = "projectx-demo-v3";
+export const SAMPLE_ID = "cmp-saudi-logistics";
+const EMPTY_STATS = { companies: 0, discovered: 0, qualified: 0, review: 0, drafts: 0 };
 
 export function buildSeed(): State {
   const data = getDataset();
-  const icps: { id: string; name: string; createdAt: string; icp: ICP }[] = [
+  const res = runPipeline(SAMPLE_ID, SAMPLE_CAMPAIGN, data);
+  let q = 0;
+  let n = 0;
+  const leads = res.leads.map((l) => {
+    let review: ReviewStatus = "Pending";
+    if (l.qualification === "Qualified") {
+      q++;
+      if (q % 3 === 1) review = "Approved";
+      else if (q % 5 === 0) review = "Saved";
+    } else if (l.qualification === "Not qualified") {
+      n++;
+      if (n % 4 === 0) review = "Rejected";
+    }
+    return { ...l, review };
+  });
+  const campaigns: Campaign[] = [
+    { ...SAMPLE_CAMPAIGN, id: SAMPLE_ID, createdAt: "2026-11-02T09:15:00Z", status: "complete", isSample: true, stats: res.stats },
     {
-      id: "cmp-fintech",
-      name: "Q4 Fintech & Cybersecurity Expansion",
-      createdAt: "2026-10-12",
-      icp: interpretICP("Fintech and Cybersecurity companies in Europe and MENA with 100-2000 employees. Target VP and C-level revenue leaders at companies that recently raised funding or are hiring."),
-    },
-    {
-      id: "cmp-logistics",
-      name: "Logistics Ops Leaders – North America",
-      createdAt: "2026-10-26",
-      icp: interpretICP("Logistics and Manufacturing companies in North America, 200-4000 employees. Director and VP operations leaders with expansion or tech change signals."),
+      id: "cmp-uae-retail",
+      name: "UAE Retail Distribution",
+      industry: "Retail and E-commerce",
+      country: "United Arab Emirates",
+      cities: ["Dubai", "Abu Dhabi"],
+      sizeLabel: "Upper mid-market (500–2,000)",
+      employeeMin: 500,
+      employeeMax: 2000,
+      revenueMin: 20,
+      revenueMax: 400,
+      positions: ["Chief Operating Officer", "Supply Chain Director", "Logistics Manager"],
+      icp: "Omnichannel retailers in the UAE managing their own last-mile delivery.",
+      offering: "FleetFlow — a fictional fleet and logistics workflow optimization software.",
+      objective: "Generate qualified pipeline",
+      createdAt: "2026-11-04T11:40:00Z",
+      status: "draft",
+      isSample: false,
+      stats: EMPTY_STATS,
     },
   ];
-  const campaigns: Campaign[] = [];
-  const leads: Lead[] = [];
-  for (const c of icps) {
-    const res = runPipeline(c.id, c.icp, data);
-    campaigns.push({ id: c.id, name: c.name, icp: c.icp, createdAt: c.createdAt, status: "complete", stats: res.stats });
-    const seen = new Set(leads.map((l) => l.contactId));
-    res.leads.filter((l) => !seen.has(l.contactId)).forEach((l, i) => {
-      const status = l.tier === "Cold" ? (i % 3 === 0 ? "rejected" : "qualified") : SEED_STATUSES[i % SEED_STATUSES.length]!;
-      leads.push({ ...l, status });
-    });
-  }
-  return { campaigns, leads, drafts: {} };
+  const companies = new Map(data.companies.map((c) => [c.id, c]));
+  const contacts = new Map(data.contacts.map((c) => [c.id, c]));
+  const drafts: Record<string, Draft> = {};
+  leads.filter((l) => l.review === "Approved").slice(0, 2).forEach((l, i) => {
+    drafts[l.id] = { ...generateDraft(l, companies.get(l.companyId)!, contacts.get(l.contactId)!, SAMPLE_CAMPAIGN, "friendly", i), savedAt: `2026-11-03T1${i}:20:00Z` };
+  });
+  const events: ActivityEvent[] = [
+    { id: "e5", at: "2026-11-04T11:40:00Z", kind: "campaign", message: "Draft campaign “UAE Retail Distribution” saved" },
+    { id: "e4", at: "2026-11-03T11:20:00Z", kind: "draft", message: "2 outreach drafts saved for approved prospects" },
+    { id: "e3", at: "2026-11-03T09:05:00Z", kind: "review", message: `${leads.filter((l) => l.review === "Approved").length} prospects approved in Saudi Logistics Prospecting` },
+    { id: "e2", at: "2026-11-02T09:18:00Z", kind: "agent", message: `Agent qualified ${res.stats.qualified} of ${res.stats.discovered} prospects for Saudi Logistics Prospecting` },
+    { id: "e1", at: "2026-11-02T09:15:00Z", kind: "campaign", message: "Sample campaign “Saudi Logistics Prospecting” created" },
+  ];
+  return { campaigns, leads, drafts, events, activeCampaignId: SAMPLE_ID, guideStep: null };
 }
 
 interface Store extends State {
   companies: Map<string, Company>;
   contacts: Map<string, Contact>;
-  createCampaign: (name: string, icp: ICP) => string;
+  saveCampaign: (input: CampaignInput, id?: string) => string;
+  runCampaign: (id: string) => void;
   completeCampaign: (id: string) => void;
-  setStatus: (leadIds: string[], status: LeadStatus) => void;
-  getDraft: (leadId: string) => Draft | null;
-  regenerateDraft: (leadId: string, tone: Tone) => void;
-  saveDraft: (leadId: string, patch: Partial<Pick<Draft, "subject" | "body">>) => void;
+  setReview: (leadIds: string[], review: ReviewStatus) => void;
+  buildDraft: (leadId: string, tone: Tone, variant: number) => Omit<Draft, "savedAt"> | null;
+  saveDraft: (draft: Omit<Draft, "savedAt">) => void;
+  setGuideStep: (step: number | null) => void;
   reset: () => void;
 }
 
 const Ctx = createContext<Store | null>(null);
+const nowIso = () => new Date().toISOString();
+let evSeq = 0;
+const ev = (kind: ActivityEvent["kind"], message: string): ActivityEvent => ({ id: `ev-${Date.now().toString(36)}-${evSeq++}`, at: nowIso(), kind, message });
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(() => buildSeed());
@@ -64,7 +97,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState(JSON.parse(raw));
+      if (raw) setState(JSON.parse(raw) as State);
     } catch { /* ignore */ }
     loaded.current = true;
   }, []);
@@ -79,70 +112,82 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     return { companies: new Map(d.companies.map((c) => [c.id, c])), contacts: new Map(d.contacts.map((c) => [c.id, c])) };
   }, []);
 
-  const createCampaign = useCallback((name: string, icp: ICP) => {
-    const id = `cmp-${Date.now().toString(36)}`;
-    setState((s) => ({
-      ...s,
-      campaigns: [{ id, name, icp, createdAt: new Date().toISOString().slice(0, 10), status: "running", stats: { scanned: 0, matched: 0, contacts: 0, qualified: 0 } }, ...s.campaigns],
-    }));
-    return id;
+  const saveCampaign = useCallback((input: CampaignInput, id?: string) => {
+    const cid = id ?? `cmp-${Date.now().toString(36)}`;
+    setState((s) => {
+      const existing = s.campaigns.find((c) => c.id === cid);
+      const campaigns = existing
+        ? s.campaigns.map((c) => (c.id === cid ? { ...c, ...input } : c))
+        : [{ ...input, id: cid, createdAt: nowIso(), status: "draft" as const, isSample: false, stats: EMPTY_STATS }, ...s.campaigns];
+      return { ...s, campaigns, activeCampaignId: cid, events: [ev("campaign", `Campaign “${input.name}” ${existing ? "updated" : "saved as draft"}`), ...s.events] };
+    });
+    return cid;
+  }, []);
+
+  const runCampaign = useCallback((id: string) => {
+    setState((s) => {
+      const c = s.campaigns.find((x) => x.id === id);
+      if (!c) return s;
+      return {
+        ...s,
+        activeCampaignId: id,
+        campaigns: s.campaigns.map((x) => (x.id === id ? { ...x, status: "running" as const } : x)),
+        events: [ev("agent", `AI agent started on “${c.name}”`), ...s.events],
+      };
+    });
   }, []);
 
   const completeCampaign = useCallback((id: string) => {
     setState((s) => {
       const c = s.campaigns.find((x) => x.id === id);
-      if (!c || c.status === "complete") return s;
-      const res = runPipeline(id, c.icp, getDataset());
+      if (!c || c.status !== "running") return s;
+      const res = runPipeline(id, c, getDataset());
+      const drafts = Object.fromEntries(Object.entries(s.drafts).filter(([k]) => !k.startsWith(`${id}__`)));
       return {
         ...s,
-        campaigns: s.campaigns.map((x) => (x.id === id ? { ...x, status: "complete", stats: res.stats } : x)),
+        drafts,
+        campaigns: s.campaigns.map((x) => (x.id === id ? { ...x, status: "complete" as const, stats: res.stats } : x)),
         leads: [...s.leads.filter((l) => l.campaignId !== id), ...res.leads],
+        events: [ev("agent", `Agent qualified ${res.stats.qualified} of ${res.stats.discovered} prospects for “${c.name}”`), ...s.events],
       };
     });
   }, []);
 
-  const setStatus = useCallback((ids: string[], status: LeadStatus) => {
+  const setReview = useCallback((ids: string[], review: ReviewStatus) => {
     const set = new Set(ids);
-    setState((s) => ({ ...s, leads: s.leads.map((l) => (set.has(l.id) ? { ...l, status } : l)) }));
+    setState((s) => ({
+      ...s,
+      leads: s.leads.map((l) => (set.has(l.id) ? { ...l, review } : l)),
+      events: [ev("review", `${ids.length} prospect${ids.length === 1 ? "" : "s"} marked ${review.toLowerCase()}`), ...s.events],
+    }));
   }, []);
 
-  const build = useCallback(
-    (leadId: string, tone: Tone, variant: number, leads: Lead[]) => {
-      const lead = leads.find((l) => l.id === leadId);
-      if (!lead) return null;
-      return generateDraft(lead, companies.get(lead.companyId)!, contacts.get(lead.contactId)!, tone, variant);
+  const buildDraft = useCallback(
+    (leadId: string, tone: Tone, variant: number) => {
+      const lead = state.leads.find((l) => l.id === leadId);
+      const campaign = lead && state.campaigns.find((c) => c.id === lead.campaignId);
+      if (!lead || !campaign) return null;
+      return generateDraft(lead, companies.get(lead.companyId)!, contacts.get(lead.contactId)!, campaign, tone, variant);
     },
-    [companies, contacts],
+    [state.leads, state.campaigns, companies, contacts],
   );
 
-  const getDraft = useCallback(
-    (leadId: string) => state.drafts[leadId] ?? build(leadId, "friendly", 0, state.leads),
-    [state.drafts, state.leads, build],
-  );
-
-  const regenerateDraft = useCallback((leadId: string, tone: Tone) => {
+  const saveDraft = useCallback((d: Omit<Draft, "savedAt">) => {
     setState((s) => {
-      const prev = s.drafts[leadId];
-      const variant = prev && prev.tone === tone ? prev.variant + 1 : 0;
-      const d = build(leadId, tone, variant, s.leads);
-      return d ? { ...s, drafts: { ...s.drafts, [leadId]: d } } : s;
+      const lead = s.leads.find((l) => l.id === d.leadId);
+      const name = lead ? contacts.get(lead.contactId)?.name ?? "prospect" : "prospect";
+      return { ...s, drafts: { ...s.drafts, [d.leadId]: { ...d, savedAt: nowIso() } }, events: [ev("draft", `Outreach draft saved for ${name}`), ...s.events] };
     });
-  }, [build]);
+  }, [contacts]);
 
-  const saveDraft = useCallback((leadId: string, patch: Partial<Pick<Draft, "subject" | "body">>) => {
-    setState((s) => {
-      const base = s.drafts[leadId] ?? build(leadId, "friendly", 0, s.leads);
-      if (!base) return s;
-      return { ...s, drafts: { ...s.drafts, [leadId]: { ...base, ...patch, edited: true } } };
-    });
-  }, [build]);
+  const setGuideStep = useCallback((step: number | null) => setState((s) => ({ ...s, guideStep: step })), []);
 
   const reset = useCallback(() => {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     setState(buildSeed());
   }, []);
 
-  const value: Store = { ...state, companies, contacts, createCampaign, completeCampaign, setStatus, getDraft, regenerateDraft, saveDraft, reset };
+  const value: Store = { ...state, companies, contacts, saveCampaign, runCampaign, completeCampaign, setReview, buildDraft, saveDraft, setGuideStep, reset };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -152,4 +197,8 @@ export function useDemo() {
   return v;
 }
 
-export const CONTACTED: LeadStatus[] = ["contacted", "replied", "meeting"];
+export function formatTime(iso: string) {
+  const d = new Date(iso);
+  const m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()];
+  return `${m} ${d.getUTCDate()}, ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
+}

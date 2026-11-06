@@ -1,80 +1,133 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader, Panel, Stat, pageHead } from "@/components/app/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CONTACTED, useDemo } from "@/lib/demo/store";
+import { useDemo } from "@/lib/demo/store";
 
 export const Route = createFileRoute("/analytics")({
-  head: () => pageHead("Campaign Analytics", "Performance of ProjectX prospecting campaigns: funnel, scores and replies."),
+  head: () => pageHead("Analytics", "Campaign analytics: prospects discovered, qualification, funnel, scores and approvals."),
   component: Analytics,
 });
 
 function Analytics() {
-  const { leads, campaigns, companies } = useDemo();
+  const { leads, campaigns, drafts } = useDemo();
   const [cid, setCid] = useState("all");
   const ls = leads.filter((l) => cid === "all" || l.campaignId === cid);
-  const contacted = ls.filter((l) => CONTACTED.includes(l.status));
-  const replied = ls.filter((l) => l.status === "replied" || l.status === "meeting");
-  const meetings = ls.filter((l) => l.status === "meeting");
+  const total = ls.length;
+  const count = (f: (l: (typeof ls)[number]) => boolean) => ls.filter(f).length;
+  const qualified = count((l) => l.qualification === "Qualified");
+  const needs = count((l) => l.qualification === "Needs review");
+  const notq = total - qualified - needs;
+  const approved = count((l) => l.review === "Approved");
+  const rejected = count((l) => l.review === "Rejected");
+  const savedL = count((l) => l.review === "Saved");
+  const pending = total - approved - rejected - savedL;
+  const savedDrafts = ls.filter((l) => drafts[l.id]).length;
+  const generated = qualified;
 
-  const daily = Array.from({ length: 14 }, (_, d) => {
-    const day = ls.filter((l) => l.discoveredDay <= d);
-    return {
-      day: `Day ${d + 1}`,
-      Qualified: day.length,
-      Contacted: day.filter((l) => CONTACTED.includes(l.status) && l.discoveredDay + 2 <= d).length,
-      Replied: day.filter((l) => (l.status === "replied" || l.status === "meeting") && l.discoveredDay + 4 <= d).length,
-    };
-  });
-  const dist = [40, 50, 60, 70, 80, 90].map((b) => ({ range: `${b}–${b + 9}`, Leads: ls.filter((l) => l.score >= b && l.score < b + 10).length }));
-  const byInd = Object.entries(ls.reduce<Record<string, { leads: number; replied: number }>>((a, l) => {
-    const i = companies.get(l.companyId)!.industry; a[i] ??= { leads: 0, replied: 0 }; a[i].leads++;
-    if (l.status === "replied" || l.status === "meeting") a[i].replied++; return a;
-  }, {})).map(([industry, v]) => ({ industry, Leads: v.leads, Replies: v.replied })).sort((a, b) => b.Leads - a.Leads);
-  const avg = ls.length ? Math.round(ls.reduce((a, l) => a + l.score, 0) / ls.length) : 0;
+  const qualData = [
+    { name: "Qualified", value: qualified, color: "var(--success)" },
+    { name: "Needs review", value: needs, color: "var(--warning)" },
+    { name: "Not qualified", value: notq, color: "var(--chart-5)" },
+  ];
+  const funnel = [
+    { stage: "Discovered", value: total },
+    { stage: "Qualified", value: qualified },
+    { stage: "Approved", value: approved },
+    { stage: "Drafts saved", value: savedDrafts },
+  ];
+  const dist = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${i * 10 + 9}`, Prospects: count((l) => l.score >= i * 10 && (i === 9 ? l.score <= 100 : l.score < i * 10 + 10)), band: i >= 7 ? "q" : i >= 5 ? "r" : "n" }));
+  const approvals = [
+    { name: "Approved", value: approved, color: "var(--primary)" },
+    { name: "Saved", value: savedL, color: "var(--hot)" },
+    { name: "Rejected", value: rejected, color: "var(--destructive)" },
+    { name: "Pending", value: pending, color: "var(--chart-5)" },
+  ];
+  const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
 
   return (
     <>
-      <PageHeader title="Campaign analytics" description="Simulated performance over the first 14 days of each campaign."
-        actions={<Select value={cid} onValueChange={setCid}><SelectTrigger className="w-64"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>} />
+      <PageHeader title="Campaign analytics" description="Every number is calculated live from the demo data and your review decisions."
+        actions={<Select value={cid} onValueChange={setCid}><SelectTrigger className="w-64" aria-label="Campaign"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaigns.filter((c) => c.status === "complete").map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>} />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Qualified leads" value={ls.length} hint={`Average score ${avg}`} />
-        <Stat label="Contacted" value={contacted.length} />
-        <Stat label="Reply rate" value={`${contacted.length ? Math.round((replied.length / contacted.length) * 100) : 0}%`} hint="Industry benchmark: 8%" />
-        <Stat label="Meetings booked" value={meetings.length} hint={`${contacted.length ? Math.round((meetings.length / contacted.length) * 100) : 0}% of contacted`} />
+        <Stat label="Total prospects discovered" value={total} />
+        <Stat label="Qualified lead percentage" value={`${pct(qualified, total)}%`} hint={`${qualified} of ${total} scored 70+`} />
+        <Stat label="Outreach drafts created" value={generated + savedDrafts} hint={`${generated} generated by agent · ${savedDrafts} saved by you`} />
+        <Stat label="Approval rate" value={`${pct(approved, approved + rejected + savedL)}%`} hint={`${approved} approved of ${approved + rejected + savedL} reviewed`} />
       </div>
-      <Panel title="Pipeline over time" className="mt-6">
-        <div className="h-72">
-          <ResponsiveContainer>
-            <AreaChart data={daily} margin={{ left: -20 }}>
-              <CartesianGrid vertical={false} stroke="var(--border)" />
-              <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} />
-              <Tooltip /><Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-              <Area type="monotone" dataKey="Qualified" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.12} strokeWidth={2} />
-              <Area type="monotone" dataKey="Contacted" stroke="var(--chart-2)" fill="var(--chart-2)" fillOpacity={0.12} strokeWidth={2} />
-              <Area type="monotone" dataKey="Replied" stroke="var(--chart-3)" fill="var(--chart-3)" fillOpacity={0.15} strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </Panel>
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Panel title="Lead score distribution">
-          <div className="h-64"><ResponsiveContainer><BarChart data={dist} margin={{ left: -20 }}>
-            <CartesianGrid vertical={false} stroke="var(--border)" />
-            <XAxis dataKey="range" tickLine={false} axisLine={false} fontSize={12} /><YAxis tickLine={false} axisLine={false} fontSize={12} />
-            <Tooltip cursor={{ fill: "var(--muted)" }} /><Bar dataKey="Leads" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-          </BarChart></ResponsiveContainer></div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <Panel title="Qualification distribution">
+          <div className="h-56">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={qualData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2} stroke="none">
+                  {qualData.map((d) => <Cell key={d.name} fill={d.color} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <Legend items={qualData.map((d) => ({ ...d, extra: `${pct(d.value, total)}%` }))} />
         </Panel>
-        <Panel title="Performance by industry">
-          <div className="h-64"><ResponsiveContainer><BarChart data={byInd} layout="vertical" margin={{ left: 30 }}>
-            <XAxis type="number" hide /><YAxis type="category" dataKey="industry" tickLine={false} axisLine={false} fontSize={12} width={110} />
-            <Tooltip cursor={{ fill: "var(--muted)" }} /><Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="Leads" fill="var(--chart-5)" radius={[0, 4, 4, 0]} /><Bar dataKey="Replies" fill="var(--chart-3)" radius={[0, 4, 4, 0]} />
-          </BarChart></ResponsiveContainer></div>
+        <Panel title="Campaign funnel" className="lg:col-span-2">
+          <div className="space-y-4 py-2">
+            {funnel.map((f, i) => (
+              <div key={f.stage} className="flex items-center gap-4">
+                <div className="w-28 shrink-0 text-sm text-muted-foreground">{f.stage}</div>
+                <div className="relative h-9 flex-1 overflow-hidden rounded-md bg-muted">
+                  <div className="flex h-full items-center rounded-md px-3 text-sm font-semibold text-primary-foreground" style={{ width: `${Math.max(8, pct(f.value, total))}%`, background: `var(--chart-${i + 1})` }}>{f.value}</div>
+                </div>
+                <div className="w-12 text-right text-xs tabular-nums text-muted-foreground">{i === 0 ? "100%" : `${pct(f.value, funnel[i - 1]!.value)}%`}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Percentages show conversion from the previous stage.</p>
+        </Panel>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <Panel title="Lead score distribution" className="lg:col-span-2">
+          <div className="h-64">
+            <ResponsiveContainer>
+              <BarChart data={dist} margin={{ left: -20 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" />
+                <XAxis dataKey="range" tickLine={false} axisLine={false} fontSize={11} />
+                <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+                <Tooltip cursor={{ fill: "var(--muted)" }} />
+                <Bar dataKey="Prospects" radius={[4, 4, 0, 0]}>
+                  {dist.map((d) => <Cell key={d.range} fill={d.band === "q" ? "var(--success)" : d.band === "r" ? "var(--warning)" : "var(--chart-5)"} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Panel>
+        <Panel title="Approval statistics">
+          <div className="space-y-3">
+            {approvals.map((a) => (
+              <div key={a.name}>
+                <div className="flex justify-between text-sm"><span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: a.color }} />{a.name}</span><span className="font-semibold tabular-nums">{a.value}</span></div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${pct(a.value, total)}%`, background: a.color }} /></div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 border-t pt-4 text-xs text-muted-foreground">{pending} prospects still waiting for a decision.</div>
         </Panel>
       </div>
     </>
+  );
+}
+
+function Legend({ items }: { items: { name: string; value: number; color: string; extra: string }[] }) {
+  return (
+    <ul className="mt-2 space-y-1.5">
+      {items.map((d) => (
+        <li key={d.name} className="flex items-center gap-2 text-sm">
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: d.color }} />
+          <span className="flex-1">{d.name}</span><span className="font-semibold tabular-nums">{d.value}</span><span className="w-10 text-right text-xs text-muted-foreground">{d.extra}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

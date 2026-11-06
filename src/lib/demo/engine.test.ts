@@ -1,44 +1,55 @@
 import { describe, expect, it } from "vitest";
 import { getDataset } from "./data";
-import { filterCompanies, generateDraft, interpretICP, runPipeline, scoreLead, tierFor } from "./engine";
-
-const icp = interpretICP("Fintech companies in Europe with 100-2000 employees, VP revenue leaders, recently raised funding.");
+import { SAMPLE_CAMPAIGN, generateDraft, nextAction, qualificationFor, runPipeline } from "./engine";
 
 describe("lead engine", () => {
-  it("tiers: Hot >= 80, Warm 60-79, Cold < 60", () => {
-    expect(tierFor(80)).toBe("Hot");
-    expect(tierFor(79)).toBe("Warm");
-    expect(tierFor(60)).toBe("Warm");
-    expect(tierFor(59)).toBe("Cold");
+  it("qualification: Qualified >= 70, Needs review 50-69, Not qualified < 50", () => {
+    expect(qualificationFor(70)).toBe("Qualified");
+    expect(qualificationFor(69)).toBe("Needs review");
+    expect(qualificationFor(50)).toBe("Needs review");
+    expect(qualificationFor(49)).toBe("Not qualified");
+  });
+
+  it("Saudi sample ranks Riyadh/Jeddah/Dammam logistics companies (50–500 staff) at the top", () => {
+    const d = getDataset();
+    const res = runPipeline("t", SAMPLE_CAMPAIGN, d);
+    const top = res.leads.slice(0, 10);
+    expect(top.length).toBe(10);
+    for (const l of top) {
+      const co = d.companies.find((c) => c.id === l.companyId)!;
+      expect(co.industry).toBe("Logistics and Supply Chain");
+      expect(["Riyadh", "Jeddah", "Dammam"]).toContain(co.city);
+      expect(co.employees).toBeGreaterThanOrEqual(50);
+      expect(co.employees).toBeLessThanOrEqual(500);
+    }
+    expect(res.stats.qualified).toBeGreaterThan(0);
   });
 
   it("scores are deterministic and within 0-100", () => {
     const d = getDataset();
-    for (const ct of d.contacts) {
-      const co = d.companies.find((c) => c.id === ct.companyId)!;
-      const a = scoreLead(icp, co, ct);
-      expect(a.score).toBeGreaterThanOrEqual(0);
-      expect(a.score).toBeLessThanOrEqual(100);
-      expect(scoreLead(icp, co, ct).score).toBe(a.score);
-    }
-    expect(runPipeline("x", icp, d).leads.map((l) => l.score)).toEqual(runPipeline("x", icp, d).leads.map((l) => l.score));
+    const a = runPipeline("x", SAMPLE_CAMPAIGN, d).leads.map((l) => l.score);
+    const b = runPipeline("x", SAMPLE_CAMPAIGN, d).leads.map((l) => l.score);
+    expect(a).toEqual(b);
+    expect(a.every((s) => s >= 0 && s <= 100)).toBe(true);
   });
 
-  it("exclusions remove matching companies", () => {
+  it("draft includes contact first name, company, city and the offering", () => {
     const d = getDataset();
-    const target = d.companies.find((c) => c.industry === "Fintech")!;
-    const out = filterCompanies({ ...icp, exclusions: [target.name] }, d.companies);
-    expect(out.some((c) => c.id === target.id)).toBe(false);
-  });
-
-  it("draft includes first name, company and a signal or industry", () => {
-    const d = getDataset();
-    const lead = runPipeline("x", icp, d).leads[0]!;
+    const lead = runPipeline("x", SAMPLE_CAMPAIGN, d).leads[0]!;
     const co = d.companies.find((c) => c.id === lead.companyId)!;
     const ct = d.contacts.find((c) => c.id === lead.contactId)!;
-    const draft = generateDraft(lead, co, ct, "friendly");
-    expect(draft.body).toContain(ct.name.split(" ")[0]);
-    expect(draft.body).toContain(co.name);
-    if (co.signals[0]) expect(draft.body).toContain(co.signals[0].detail);
+    const draft = generateDraft(lead, co, ct, SAMPLE_CAMPAIGN, "friendly");
+    const text = `${draft.subject}\n${draft.body}`;
+    expect(text).toContain(ct.name.split(" ")[0]!);
+    expect(text).toContain(co.name);
+    expect(text).toContain(co.city);
+    expect(text).toContain(SAMPLE_CAMPAIGN.offering);
+  });
+
+  it("next action follows qualification and review", () => {
+    expect(nextAction({ qualification: "Qualified", review: "Pending", factors: [] }).title).toBe("Approve and send a personalised intro");
+    expect(nextAction({ qualification: "Qualified", review: "Approved", factors: [] }).title).toBe("Send personalised intro");
+    expect(nextAction({ qualification: "Not qualified", review: "Pending", factors: [] }).title).toBe("Hold for 30 days");
+    expect(nextAction({ qualification: "Qualified", review: "Rejected", factors: [] }).title).toBe("No further action");
   });
 });

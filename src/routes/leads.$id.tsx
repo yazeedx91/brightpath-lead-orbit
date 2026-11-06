@@ -1,81 +1,116 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, Building2, Lightbulb, Mail, MapPin, Users, Zap } from "lucide-react";
-import { DraftEditor } from "@/components/app/DraftEditor";
-import { Avatar, Chip, Panel, ScoreBadge, StatusBadge, pageHead } from "@/components/app/ui";
-import { improvementTips } from "@/lib/demo/engine";
+import { AlertTriangle, ArrowLeft, Bookmark, Building2, Check, CheckCircle2, Globe, Mail, MapPin, Send, Users, X, Zap } from "lucide-react";
+import { toast } from "sonner";
+import { Avatar, Chip, Panel, QualificationBadge, ReviewBadge, pageHead, scoreTone } from "@/components/app/ui";
+import { Button } from "@/components/ui/button";
+import { nextAction, qualificationExplanation, selectionReasons } from "@/lib/demo/engine";
 import { useDemo } from "@/lib/demo/store";
+import type { ReviewStatus } from "@/lib/demo/types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/leads/$id")({
-  head: () => pageHead("Lead Profile", "Enriched prospect profile with an explainable AI lead score."),
+  head: () => pageHead("Lead Profile", "Prospect profile with explainable lead score and recommended next action."),
   component: LeadProfile,
 });
 
 function LeadProfile() {
   const { id } = Route.useParams();
-  const { leads, companies, contacts, campaigns } = useDemo();
+  const { leads, companies, contacts, campaigns, setReview } = useDemo();
   const lead = leads.find((l) => l.id === id);
-  if (!lead) return <p className="text-sm text-muted-foreground">Lead not found. <Link to="/leads" className="text-primary">Back to leads</Link></p>;
-  const ct = contacts.get(lead.contactId)!; const co = companies.get(lead.companyId)!;
+  if (!lead) return <p className="text-sm text-muted-foreground">Prospect not found. <Link to="/leads" search={{ campaign: undefined }} className="text-primary">Back to leads</Link></p>;
+  const ct = contacts.get(lead.contactId)!;
+  const co = companies.get(lead.companyId)!;
   const campaign = campaigns.find((c) => c.id === lead.campaignId);
-  const tips = improvementTips(lead.factors);
+  const { positives, concerns } = selectionReasons(lead);
+  const action = nextAction(lead);
+  const act = (r: ReviewStatus) => { setReview([lead.id], r); toast.success(`Prospect ${r === "Saved" ? "saved" : r.toLowerCase()}`); };
 
   return (
     <>
-      <Link to="/leads" className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3 w-3" /> All leads</Link>
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+      <Link to="/leads" search={{ campaign: lead.campaignId }} className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3 w-3" /> Back to leads</Link>
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center">
         <Avatar name={ct.name} className="h-14 w-14 text-base" />
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{ct.name}</h1>
           <p className="text-sm text-muted-foreground">{ct.title} at {co.name} · {campaign?.name}</p>
+          <div className="mt-2 flex gap-2"><QualificationBadge value={lead.qualification} /><ReviewBadge value={lead.review} /></div>
         </div>
-        <div className="flex items-center gap-2"><StatusBadge status={lead.status} /><ScoreBadge score={lead.score} tier={lead.tier} /></div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant={lead.review === "Rejected" ? "secondary" : "outline"} onClick={() => act("Rejected")}><X className="h-4 w-4" /> Reject</Button>
+          <Button variant={lead.review === "Saved" ? "secondary" : "outline"} onClick={() => act("Saved")}><Bookmark className="h-4 w-4" /> Save</Button>
+          <Button variant={lead.review === "Approved" ? "secondary" : "default"} onClick={() => act("Approved")}><Check className="h-4 w-4" /> {lead.review === "Approved" ? "Approved" : "Approve"}</Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Panel title="Why this score" action={<span className="font-display text-xl font-bold tabular-nums">{lead.score}<span className="text-sm font-medium text-muted-foreground">/100</span></span>}>
+          <div className="grid gap-6 md:grid-cols-[180px_1fr]">
+            <div className="flex flex-col items-center justify-center rounded-lg border bg-card p-5 text-center shadow-[var(--shadow-card)]">
+              <div className="text-xs font-medium text-muted-foreground">Lead score</div>
+              <div className={cn("mt-2 flex h-24 w-24 items-center justify-center rounded-full font-display text-4xl font-bold tabular-nums", scoreTone(lead.score))}>{lead.score}</div>
+              <div className="mt-2 text-xs text-muted-foreground">out of 100</div>
+            </div>
+            <div className="rounded-lg border bg-card p-5 shadow-[var(--shadow-card)]">
+              <div className="text-xs font-semibold uppercase tracking-wider text-primary">Recommended next action</div>
+              <div className="mt-2 text-lg font-bold">{action.title}</div>
+              <p className="mt-1 text-sm text-muted-foreground">{action.detail}</p>
+              <div className="mt-3 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Qualification: </span>{qualificationExplanation(lead)}</div>
+              {lead.review !== "Rejected" && <Button size="sm" className="mt-4" asChild><Link to="/outreach" search={{ lead: lead.id }}><Send className="h-3.5 w-3.5" /> Open in Outreach</Link></Button>}
+            </div>
+          </div>
+
+          <Panel title="Score breakdown">
             <div className="mb-5 flex h-2.5 overflow-hidden rounded-full bg-muted">
-              {lead.factors.map((f, i) => <div key={f.key} style={{ width: `${f.points}%`, background: `var(--chart-${i + 1})` }} />)}
+              {lead.factors.map((f, i) => <div key={f.key} style={{ width: `${f.points}%`, background: `var(--chart-${(i % 5) + 1})` }} />)}
             </div>
             <div className="space-y-4">
               {lead.factors.map((f, i) => (
                 <div key={f.key}>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 font-medium"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: `var(--chart-${i + 1})` }} />{f.label}</span>
+                    <span className="flex items-center gap-2 font-medium"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: `var(--chart-${(i % 5) + 1})` }} />{f.label}</span>
                     <span className="tabular-nums text-muted-foreground">{f.points} / {f.weight}</span>
                   </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${f.value * 100}%`, background: `var(--chart-${i + 1})` }} /></div>
-                  <p className="mt-1.5 text-xs text-muted-foreground">{f.reason}</p>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${f.value * 100}%`, background: `var(--chart-${(i % 5) + 1})` }} /></div>
+                  <p className="mt-1 text-xs text-muted-foreground">{f.reason}</p>
                 </div>
               ))}
             </div>
-            {tips.length > 0 && (
-              <div className="mt-5 rounded-md bg-accent/60 p-3 text-xs text-accent-foreground">
-                <div className="mb-1 flex items-center gap-1.5 font-semibold"><Lightbulb className="h-3.5 w-3.5" /> What would raise this score</div>
-                <ul className="list-disc space-y-0.5 pl-5">{tips.map((t) => <li key={t}>{t}</li>)}</ul>
-              </div>
+          </Panel>
+
+          <Panel title="Reasons for selection">
+            <ul className="space-y-2">
+              {positives.map((r) => <li key={r} className="flex gap-2 text-sm"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />{r}</li>)}
+              {positives.length === 0 && <li className="text-sm text-muted-foreground">No strong matching factors.</li>}
+            </ul>
+            {concerns.length > 0 && (
+              <>
+                <div className="mb-2 mt-5 text-xs font-medium text-muted-foreground">Concerns</div>
+                <ul className="space-y-2">{concerns.map((r) => <li key={r} className="flex gap-2 text-sm text-muted-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />{r}</li>)}</ul>
+              </>
             )}
           </Panel>
-          <Panel title="Personalised outreach draft"><DraftEditor leadId={lead.id} /></Panel>
         </div>
 
         <div className="space-y-6">
-          <Panel title="Prospect">
+          <Panel title="Decision-maker">
+            <div className="mb-3 font-semibold">{ct.name}</div>
             <dl className="space-y-3 text-sm">
-              <Row icon={Mail} k="Email" v={ct.email} />
-              <Row icon={Users} k="Seniority" v={`${ct.seniority} · ${ct.department}`} />
-              <Row icon={Zap} k="Tenure" v={`${ct.tenureMonths} months in role`} />
+              <Row icon={Users} k="Position" v={`${ct.title} · ${ct.seniority}`} />
+              <Row icon={Mail} k="Email (fictional)" v={ct.email} />
+              <Row icon={Zap} k="Time in role" v={`${ct.tenureMonths} months`} />
             </dl>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{ct.summary}</p>
           </Panel>
-          <Panel title="Company">
-            <div className="mb-3 font-semibold">{co.name} <span className="font-normal text-muted-foreground">· {co.domain}</span></div>
+          <Panel title="Company overview">
+            <div className="mb-2 font-semibold">{co.name}</div>
+            <p className="mb-4 text-xs leading-relaxed text-muted-foreground">{co.description}</p>
             <dl className="space-y-3 text-sm">
-              <Row icon={Building2} k="Industry" v={`${co.industry} · ${co.fundingStage}`} />
-              <Row icon={Users} k="Size" v={`${co.employees.toLocaleString()} employees · ${co.revenueBand}`} />
-              <Row icon={MapPin} k="HQ" v={`${co.hq} · ${co.region}`} />
+              <Row icon={Building2} k="Industry" v={co.industry} />
+              <Row icon={Users} k="Company size" v={`${co.employees.toLocaleString("en-US")} employees · ~$${co.revenueM}M revenue`} />
+              <Row icon={MapPin} k="Location" v={`${co.city}, ${co.country}`} />
+              <Row icon={Globe} k="Website (fictional)" v={co.website.replace("https://", "")} />
             </dl>
-            <div className="mt-4 flex flex-wrap gap-1.5">{co.techStack.map((t) => <Chip key={t}>{t}</Chip>)}</div>
+            <div className="mt-4 flex flex-wrap gap-1.5"><Chip>Founded {co.founded}</Chip><Chip>{co.fundingStage}</Chip>{co.techStack.map((t) => <Chip key={t}>{t}</Chip>)}</div>
           </Panel>
           <Panel title="Buying signals">
             {co.signals.length === 0 ? <p className="text-sm text-muted-foreground">No recent signals detected.</p> : (
@@ -99,7 +134,7 @@ function Row({ icon: Icon, k, v }: { icon: typeof Mail; k: string; v: string }) 
   return (
     <div className="flex gap-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0"><dt className="text-xs text-muted-foreground">{k}</dt><dd className="truncate">{v}</dd></div>
+      <div className="min-w-0"><dt className="text-xs text-muted-foreground">{k}</dt><dd className="break-words">{v}</dd></div>
     </div>
   );
 }

@@ -10,23 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as OutreachRouteImport } from './routes/outreach'
 import { Route as CampaignsIndexRouteImport } from './routes/campaigns.index'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as LeadsIndexRouteImport } from './routes/leads.index'
 import { Route as LeadsIdRouteImport } from './routes/leads.$id'
+import { Route as CampaignsIdEditRouteImport } from './routes/campaigns.$id.edit'
 import { Route as CampaignsIdRunRouteImport } from './routes/campaigns.$id.run'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ActivityRoute = ActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
@@ -59,6 +54,11 @@ const LeadsIdRoute = LeadsIdRouteImport.update({
   path: '/leads/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CampaignsIdEditRoute = CampaignsIdEditRouteImport.update({
+  id: '/campaigns/$id/edit',
+  path: '/campaigns/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CampaignsIdRunRoute = CampaignsIdRunRouteImport.update({
   id: '/campaigns/$id/run',
   path: '/campaigns/$id/run',
@@ -67,83 +67,83 @@ const CampaignsIdRunRoute = CampaignsIdRunRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/outreach': typeof OutreachRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/leads/$id': typeof LeadsIdRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/leads/': typeof LeadsIndexRoute
+  '/campaigns/$id/edit': typeof CampaignsIdEditRoute
   '/campaigns/$id/run': typeof CampaignsIdRunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/outreach': typeof OutreachRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/leads/$id': typeof LeadsIdRoute
   '/campaigns': typeof CampaignsIndexRoute
   '/leads': typeof LeadsIndexRoute
+  '/campaigns/$id/edit': typeof CampaignsIdEditRoute
   '/campaigns/$id/run': typeof CampaignsIdRunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/outreach': typeof OutreachRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/leads/$id': typeof LeadsIdRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/leads/': typeof LeadsIndexRoute
+  '/campaigns/$id/edit': typeof CampaignsIdEditRoute
   '/campaigns/$id/run': typeof CampaignsIdRunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/activity'
     | '/analytics'
     | '/outreach'
     | '/campaigns/new'
     | '/leads/$id'
     | '/campaigns/'
     | '/leads/'
+    | '/campaigns/$id/edit'
     | '/campaigns/$id/run'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/activity'
     | '/analytics'
     | '/outreach'
     | '/campaigns/new'
     | '/leads/$id'
     | '/campaigns'
     | '/leads'
+    | '/campaigns/$id/edit'
     | '/campaigns/$id/run'
   id:
     | '__root__'
     | '/'
-    | '/activity'
     | '/analytics'
     | '/outreach'
     | '/campaigns/new'
     | '/leads/$id'
     | '/campaigns/'
     | '/leads/'
+    | '/campaigns/$id/edit'
     | '/campaigns/$id/run'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ActivityRoute: typeof ActivityRoute
   AnalyticsRoute: typeof AnalyticsRoute
   OutreachRoute: typeof OutreachRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
   LeadsIdRoute: typeof LeadsIdRoute
   CampaignsIndexRoute: typeof CampaignsIndexRoute
   LeadsIndexRoute: typeof LeadsIndexRoute
+  CampaignsIdEditRoute: typeof CampaignsIdEditRoute
   CampaignsIdRunRoute: typeof CampaignsIdRunRoute
 }
 
@@ -154,13 +154,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/activity': {
-      id: '/activity'
-      path: '/activity'
-      fullPath: '/activity'
-      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics': {
@@ -205,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeadsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/campaigns/$id/edit': {
+      id: '/campaigns/$id/edit'
+      path: '/campaigns/$id/edit'
+      fullPath: '/campaigns/$id/edit'
+      preLoaderRoute: typeof CampaignsIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/campaigns/$id/run': {
       id: '/campaigns/$id/run'
       path: '/campaigns/$id/run'
@@ -217,13 +217,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ActivityRoute: ActivityRoute,
   AnalyticsRoute: AnalyticsRoute,
   OutreachRoute: OutreachRoute,
   CampaignsNewRoute: CampaignsNewRoute,
   LeadsIdRoute: LeadsIdRoute,
   CampaignsIndexRoute: CampaignsIndexRoute,
   LeadsIndexRoute: LeadsIndexRoute,
+  CampaignsIdEditRoute: CampaignsIdEditRoute,
   CampaignsIdRunRoute: CampaignsIdRunRoute,
 }
 export const routeTree = rootRouteImport

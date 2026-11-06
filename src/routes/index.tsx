@@ -1,92 +1,113 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, Bot, CheckCircle2 } from "lucide-react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Avatar, PageHeader, Panel, ScoreBadge, Stat, StatusBadge, pageHead } from "@/components/app/ui";
+import { Activity, ArrowRight, Bot, CheckCircle2, FileText, Megaphone, PlayCircle, Plus, Search, UserCheck, Users } from "lucide-react";
+import { useGuide } from "@/components/app/GuidedDemo";
+import { CampaignStatusBadge, Chip, DemoTag, PageHeader, Panel, Stat, pageHead } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
-import { CONTACTED, useDemo } from "@/lib/demo/store";
+import { SAMPLE_ID, formatTime, useDemo } from "@/lib/demo/store";
+import type { ActivityEvent } from "@/lib/demo/types";
 
 export const Route = createFileRoute("/")({
-  head: () => pageHead("Executive Dashboard", "Pipeline overview of the ProjectX AI lead generation agent."),
-  component: Dashboard,
+  head: () => pageHead("Overview", "Executive overview of the ProjectX AI lead generation agent: prospects, qualification and outreach."),
+  component: Overview,
 });
 
-function Dashboard() {
-  const { leads, campaigns, companies, contacts } = useDemo();
-  const active = leads.filter((l) => l.status !== "rejected");
-  const contacted = leads.filter((l) => CONTACTED.includes(l.status));
-  const replied = leads.filter((l) => l.status === "replied" || l.status === "meeting");
-  const meetings = leads.filter((l) => l.status === "meeting");
-  const awaiting = leads.filter((l) => l.status === "qualified" && l.tier !== "Cold").sort((a, b) => b.score - a.score);
+const KIND_ICON: Record<ActivityEvent["kind"], typeof Bot> = { agent: Bot, campaign: Megaphone, review: UserCheck, draft: FileText };
+
+function Overview() {
+  const { leads, campaigns, drafts, events } = useDemo();
+  const { start } = useGuide();
+  const discovered = campaigns.reduce((a, c) => a + (c.status === "complete" ? c.stats.discovered : 0), 0);
+  const qualified = leads.filter((l) => l.qualification === "Qualified").length;
+  const review = leads.filter((l) => l.review === "Pending" && l.qualification !== "Not qualified").length;
+  const generated = campaigns.reduce((a, c) => a + (c.status === "complete" ? c.stats.drafts : 0), 0);
+  const approved = leads.filter((l) => l.review === "Approved").length;
+  const reviewed = leads.filter((l) => l.review !== "Pending").length;
+  const sample = campaigns.find((c) => c.id === SAMPLE_ID);
   const funnel = [
-    { stage: "Discovered", value: campaigns.reduce((a, c) => a + c.stats.contacts, 0) },
-    { stage: "Qualified", value: leads.length },
-    { stage: "Approved", value: leads.filter((l) => ["approved", ...CONTACTED].includes(l.status)).length },
-    { stage: "Contacted", value: contacted.length },
-    { stage: "Replied", value: replied.length },
-    { stage: "Meetings", value: meetings.length },
+    { label: "Discovered", value: discovered },
+    { label: "Qualified", value: qualified },
+    { label: "Approved", value: approved },
+    { label: "Drafts saved", value: Object.keys(drafts).length },
   ];
 
   return (
     <>
-      <PageHeader eyebrow="Good afternoon, Maya" title="Executive Dashboard" description="Your AI agent has been prospecting across all active campaigns. Here is where things stand." />
+      <PageHeader
+        eyebrow="Welcome back, Maya"
+        title="Your AI prospecting agent"
+        description="ProjectX understands your ideal customer, discovers matching companies, finds decision-makers, scores every prospect with clear reasons and drafts personalised outreach for your approval."
+        actions={
+          <>
+            <Button variant="outline" onClick={start}><PlayCircle className="h-4 w-4" /> Run guided demo</Button>
+            <Button asChild><Link to="/campaigns/new"><Plus className="h-4 w-4" /> Start new campaign</Link></Button>
+          </>
+        }
+      />
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Qualified leads" value={active.length} hint={`${leads.filter((l) => l.tier === "Hot").length} hot prospects`} />
-        <Stat label="Awaiting your approval" value={awaiting.length} hint="Drafts ready to review" />
-        <Stat label="Reply rate" value={`${contacted.length ? Math.round((replied.length / contacted.length) * 100) : 0}%`} hint={`${replied.length} of ${contacted.length} contacted`} />
-        <Stat label="Meetings booked" value={meetings.length} hint="From AI-drafted outreach" />
+        <Stat label="Discovered prospects" value={discovered} hint="Across completed campaigns" icon={<Search className="h-4 w-4" />} />
+        <Stat label="Qualified prospects" value={qualified} hint={`${discovered ? Math.round((qualified / discovered) * 100) : 0}% qualification rate`} icon={<CheckCircle2 className="h-4 w-4" />} />
+        <Stat label="Requiring review" value={review} hint="Qualified or borderline, pending" icon={<Users className="h-4 w-4" />} />
+        <Stat label="Outreach drafts generated" value={generated} hint={`${Object.keys(drafts).length} saved by you`} icon={<FileText className="h-4 w-4" />} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Panel title="Pipeline funnel" className="lg:col-span-2">
-          <div className="h-64">
-            <ResponsiveContainer>
-              <BarChart data={funnel} margin={{ left: -20 }}>
-                <XAxis dataKey="stage" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis tickLine={false} axisLine={false} fontSize={12} />
-                <Tooltip cursor={{ fill: "var(--muted)" }} />
-                <Bar dataKey="value" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Panel>
-        <Panel title="Agent status">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground"><Bot className="h-5 w-5" /></div>
-            <div className="text-sm">
-              <div className="font-semibold">Idle — all runs complete</div>
-              <div className="text-muted-foreground">Last run qualified {campaigns[0]?.stats.qualified ?? 0} leads.</div>
+        {sample && (
+          <Panel className="lg:col-span-2" title={<span className="flex items-center gap-2">Sample campaign <DemoTag /></span>} action={<CampaignStatusBadge status={sample.status} />}>
+            <div className="flex flex-col gap-5 md:flex-row">
+              <div className="flex-1">
+                <h3 className="text-lg font-bold">{sample.name}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Editable sample scenario — not an actual ProjectX customer or campaign.</p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <Chip>{sample.industry}</Chip><Chip>{sample.cities.join(", ")}</Chip><Chip>{sample.employeeMin}–{sample.employeeMax} employees</Chip>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Targets:</span> {sample.positions.join(", ")}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" asChild><Link to="/campaigns/$id/run" params={{ id: sample.id }}><Activity className="h-3.5 w-3.5" /> Agent activity</Link></Button>
+                  <Button size="sm" variant="outline" asChild><Link to="/leads" search={{ campaign: sample.id }}>View leads</Link></Button>
+                </div>
+              </div>
+              <div className="w-full space-y-3 md:w-64">
+                <div className="text-xs font-medium text-muted-foreground">Performance summary</div>
+                {funnel.map((f) => (
+                  <div key={f.label}>
+                    <div className="flex justify-between text-xs"><span>{f.label}</span><span className="font-semibold tabular-nums">{f.value}</span></div>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${funnel[0]!.value ? (f.value / funnel[0]!.value) * 100 : 0}%` }} /></div>
+                  </div>
+                ))}
+                <div className="border-t pt-3 text-xs text-muted-foreground">Approval rate <span className="float-right font-semibold text-foreground">{reviewed ? Math.round((approved / reviewed) * 100) : 0}%</span></div>
+              </div>
             </div>
-          </div>
-          <ul className="mt-5 space-y-3 text-sm">
-            {campaigns.slice(0, 4).map((c) => (
-              <li key={c.id} className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-success" />
-                <span className="flex-1 truncate">{c.name}</span>
-                <span className="tabular-nums text-muted-foreground">{c.stats.qualified}</span>
-              </li>
-            ))}
+          </Panel>
+        )}
+
+        <Panel title="Recent campaign activity" bodyClassName="p-0">
+          <ul className="divide-y">
+            {events.slice(0, 6).map((e) => {
+              const Icon = KIND_ICON[e.kind];
+              return (
+                <li key={e.id} className="flex gap-3 px-5 py-3">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground"><Icon className="h-3.5 w-3.5" /></div>
+                  <div className="min-w-0"><div className="text-sm">{e.message}</div><div className="text-[11px] text-muted-foreground">{formatTime(e.at)}</div></div>
+                </li>
+              );
+            })}
           </ul>
-          <Button variant="outline" size="sm" className="mt-5 w-full" asChild><Link to="/campaigns/new">Launch new campaign</Link></Button>
         </Panel>
       </div>
 
-      <Panel className="mt-6" title="Leads awaiting approval" action={<Link to="/outreach" className="flex items-center gap-1 text-xs font-medium text-primary">Review all <ArrowRight className="h-3 w-3" /></Link>}>
-        <div className="-my-2 divide-y">
-          {awaiting.slice(0, 6).map((l) => {
-            const ct = contacts.get(l.contactId)!; const co = companies.get(l.companyId)!;
-            return (
-              <Link key={l.id} to="/leads/$id" params={{ id: l.id }} className="flex items-center gap-3 py-3 hover:bg-muted/40">
-                <Avatar name={ct.name} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{ct.name} <span className="font-normal text-muted-foreground">· {ct.title}</span></div>
-                  <div className="truncate text-xs text-muted-foreground">{co.name} · {co.industry} · {co.signals[0]?.detail ?? "no recent signals"}</div>
-                </div>
-                <StatusBadge status={l.status} />
-                <ScoreBadge score={l.score} tier={l.tier} />
-              </Link>
-            );
-          })}
-          {awaiting.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Nothing waiting. Launch a campaign to find new leads.</p>}
+      <Panel className="mt-6" title="Campaigns" action={<Link to="/campaigns" className="flex items-center gap-1 text-xs font-medium text-primary">All campaigns <ArrowRight className="h-3 w-3" /></Link>} bodyClassName="p-0">
+        <div className="divide-y">
+          {campaigns.slice(0, 4).map((c) => (
+            <Link key={c.id} to="/campaigns/$id/run" params={{ id: c.id }} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/40">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 truncate text-sm font-medium">{c.name}{c.isSample && <DemoTag />}</div>
+                <div className="truncate text-xs text-muted-foreground">{c.industry} · {c.country}</div>
+              </div>
+              <div className="hidden text-right text-xs text-muted-foreground sm:block"><span className="font-semibold text-foreground tabular-nums">{c.stats.qualified}</span> qualified of {c.stats.discovered}</div>
+              <CampaignStatusBadge status={c.status} />
+            </Link>
+          ))}
         </div>
       </Panel>
     </>

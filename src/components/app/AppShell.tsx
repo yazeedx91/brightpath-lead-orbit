@@ -1,91 +1,115 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, BarChart3, LayoutDashboard, Mail, Megaphone, RotateCcw, Sparkles, Users } from "lucide-react";
+import { BarChart3, LayoutDashboard, Mail, Megaphone, PlusCircle, RotateCcw, Sparkles, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarInset,
+  SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { useDemo } from "@/lib/demo/store";
-import { cn } from "@/lib/utils";
+import { GuideCard } from "./GuidedDemo";
+import { CampaignStatusBadge } from "./ui";
 
 const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/", label: "Overview", icon: LayoutDashboard },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { to: "/activity", label: "Agent Activity", icon: Activity },
+  { to: "/campaigns/new", label: "Create Campaign", icon: PlusCircle },
   { to: "/leads", label: "Leads", icon: Users },
   { to: "/outreach", label: "Outreach", icon: Mail },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
 ] as const;
 
-export function AppShell({ children }: { children: ReactNode }) {
-  const path = useRouterState({ select: (s) => s.location.pathname });
-  const { reset, leads } = useDemo();
-  const pending = leads.filter((l) => l.status === "qualified" && l.tier !== "Cold").length;
+function isActive(path: string, to: string) {
+  if (to === "/") return path === "/";
+  if (to === "/campaigns") return path === "/campaigns" || (path.startsWith("/campaigns/") && path !== "/campaigns/new");
+  return path.startsWith(to);
+}
 
+function AppSidebar() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const { leads } = useDemo();
+  const pending = leads.filter((l) => l.review === "Pending" && l.qualification !== "Not qualified").length;
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex items-center gap-2.5 px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="font-display text-sm font-bold text-sidebar-accent-foreground">ProjectX</div>
-            <div className="text-[11px] text-sidebar-foreground/70">AI Lead Generation Agent</div>
+    <Sidebar collapsible="icon" className="top-14 h-[calc(100svh-3.5rem)]">
+      <SidebarContent className="pt-3">
+        <SidebarGroup>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV.map((n) => (
+                <SidebarMenuItem key={n.to}>
+                  <SidebarMenuButton asChild isActive={isActive(path, n.to)} tooltip={n.label}>
+                    <Link to={n.to}><n.icon /><span>{n.label}</span></Link>
+                  </SidebarMenuButton>
+                  {n.to === "/leads" && pending > 0 && <SidebarMenuBadge>{pending}</SidebarMenuBadge>}
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <div className="flex items-center gap-3 rounded-md p-1 group-data-[collapsible=icon]:justify-center">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">MC</div>
+          <div className="text-xs group-data-[collapsible=icon]:hidden">
+            <div className="font-medium text-sidebar-accent-foreground">Maya Chen</div>
+            <div className="text-sidebar-foreground/70">Demo user</div>
           </div>
         </div>
-        <nav className="mt-2 flex-1 space-y-0.5 px-3">
-          {NAV.map((n) => {
-            const active = "exact" in n ? path === n.to : path.startsWith(n.to);
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                  active ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                )}
-              >
-                <n.icon className="h-4 w-4" />
-                <span className="flex-1">{n.label}</span>
-                {n.to === "/outreach" && pending > 0 && (
-                  <span className="rounded-full bg-sidebar-primary px-1.5 text-[10px] font-semibold text-sidebar-primary-foreground">{pending}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="border-t border-sidebar-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">MC</div>
-            <div className="text-xs">
-              <div className="font-medium text-sidebar-accent-foreground">Maya Chen</div>
-              <div className="text-sidebar-foreground/70">Northwind Analytics</div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const { reset, campaigns, activeCampaignId } = useDemo();
+  const active = campaigns.find((c) => c.id === activeCampaignId) ?? campaigns[0];
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full flex-col">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-3 md:px-5">
+          <SidebarTrigger />
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Sparkles className="h-4 w-4" /></div>
+            <div className="leading-tight">
+              <div className="font-display text-sm font-bold">ProjectX</div>
+              <div className="hidden text-[11px] text-muted-foreground sm:block">AI Lead Generation Agent</div>
             </div>
-          </div>
-        </div>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-card/90 px-4 backdrop-blur md:px-8">
-          <div className="flex gap-1 overflow-x-auto md:hidden">
-            {NAV.map((n) => (
-              <Link key={n.to} to={n.to} className="rounded-md p-2 text-muted-foreground" activeProps={{ className: "bg-accent text-accent-foreground" }} activeOptions={{ exact: "exact" in n }}>
-                <n.icon className="h-4 w-4" />
-              </Link>
-            ))}
-          </div>
-          <div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-success" /> Demo environment · synthetic data only
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => { reset(); toast.success("Demo data restored"); }}>
-              <RotateCcw className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Reset demo</span>
-            </Button>
-            <Button size="sm" asChild>
-              <Link to="/campaigns/new"><Sparkles className="h-3.5 w-3.5" /> New campaign</Link>
-            </Button>
-          </div>
+          </Link>
+          <span className="ml-1 rounded-full border border-warning/40 bg-warning-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-warning">Demo mode</span>
+          {active && (
+            <Link to="/campaigns/$id/run" params={{ id: active.id }} className="ml-auto hidden items-center gap-2 rounded-md border px-2.5 py-1 text-xs hover:bg-muted lg:flex">
+              <span className="text-muted-foreground">Current campaign:</span>
+              <span className="max-w-48 truncate font-medium">{active.name}</span>
+              <CampaignStatusBadge status={active.status} />
+            </Link>
+          )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className={active ? "ml-auto lg:ml-0" : "ml-auto"}><RotateCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">Reset demo</span></Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset the demo?</AlertDialogTitle>
+                <AlertDialogDescription>All campaigns, review decisions and saved drafts go back to the original sample data.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { reset(); toast.success("Demo data restored"); }}>Reset</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8">{children}</main>
+        <div className="flex flex-1">
+          <AppSidebar />
+          <SidebarInset className="min-w-0 bg-background">
+            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8">{children}</main>
+          </SidebarInset>
+        </div>
       </div>
-    </div>
+      <GuideCard />
+    </SidebarProvider>
   );
 }

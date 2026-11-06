@@ -1,12 +1,6 @@
 export type Seniority = "C-Level" | "VP" | "Director" | "Manager" | "Individual";
-export type Tier = "Hot" | "Warm" | "Cold";
-export type LeadStatus =
-  | "qualified"
-  | "approved"
-  | "rejected"
-  | "contacted"
-  | "replied"
-  | "meeting";
+export type Qualification = "Qualified" | "Needs review" | "Not qualified";
+export type ReviewStatus = "Pending" | "Approved" | "Rejected" | "Saved";
 export type Tone = "formal" | "concise" | "friendly";
 export type SignalType = "Hiring" | "Funding" | "Expansion" | "New executive" | "Tech change";
 
@@ -16,29 +10,18 @@ export interface Signal {
   daysAgo: number;
 }
 
-export interface ICP {
-  description: string;
-  industries: string[];
-  employeeMin: number;
-  employeeMax: number;
-  regions: string[];
-  seniority: Seniority[];
-  departments: string[];
-  signals: SignalType[];
-  exclusions: string[];
-}
-
 export interface Company {
   id: string;
   name: string;
-  domain: string;
+  website: string;
   industry: string;
   employees: number;
-  revenueBand: string;
-  hq: string;
-  region: string;
+  revenueM: number; // annual revenue, USD millions
+  country: string;
+  city: string;
   techStack: string[];
   fundingStage: string;
+  founded: number;
   signals: Signal[];
   description: string;
 }
@@ -55,8 +38,42 @@ export interface Contact {
   summary: string;
 }
 
+export interface CampaignInput {
+  name: string;
+  industry: string;
+  country: string;
+  cities: string[];
+  sizeLabel: string;
+  employeeMin: number;
+  employeeMax: number;
+  revenueMin: number;
+  revenueMax: number;
+  positions: string[];
+  icp: string;
+  offering: string;
+  objective: string;
+}
+
+export interface CampaignStats {
+  companies: number;
+  discovered: number;
+  qualified: number;
+  review: number;
+  drafts: number;
+}
+
+export type CampaignStatus = "draft" | "running" | "complete";
+
+export interface Campaign extends CampaignInput {
+  id: string;
+  createdAt: string;
+  status: CampaignStatus;
+  isSample: boolean;
+  stats: CampaignStats;
+}
+
 export interface ScoreFactor {
-  key: "fit" | "intent" | "seniority" | "timing";
+  key: "industry" | "location" | "size" | "position" | "signals" | "timing";
   label: string;
   weight: number;
   value: number; // 0..1
@@ -70,10 +87,9 @@ export interface Lead {
   contactId: string;
   companyId: string;
   score: number;
-  tier: Tier;
+  qualification: Qualification;
+  review: ReviewStatus;
   factors: ScoreFactor[];
-  status: LeadStatus;
-  discoveredDay: number; // day index within campaign
 }
 
 export interface Draft {
@@ -82,17 +98,14 @@ export interface Draft {
   variant: number;
   subject: string;
   body: string;
-  personalization: string[];
-  edited: boolean;
+  savedAt: string;
 }
 
-export interface Campaign {
+export interface ActivityEvent {
   id: string;
-  name: string;
-  icp: ICP;
-  createdAt: string;
-  status: "running" | "complete";
-  stats: { scanned: number; matched: number; contacts: number; qualified: number };
+  at: string;
+  message: string;
+  kind: "campaign" | "agent" | "review" | "draft";
 }
 
 export interface Dataset {

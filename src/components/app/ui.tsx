@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import type { LeadStatus, Tier } from "@/lib/demo/types";
+import type { CampaignStatus, Qualification, ReviewStatus } from "@/lib/demo/types";
 import { cn } from "@/lib/utils";
 
-export function PageHeader({ title, description, actions, eyebrow }: { title: string; description?: string; actions?: ReactNode; eyebrow?: string }) {
+export function PageHeader({ title, description, actions, eyebrow }: { title: string; description?: string; actions?: ReactNode; eyebrow?: ReactNode }) {
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
@@ -15,67 +15,73 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
   );
 }
 
-export function Panel({ title, action, children, className }: { title?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+export function Panel({ title, action, children, className, bodyClassName }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string; bodyClassName?: string }) {
   return (
     <section className={cn("rounded-lg border bg-card shadow-[var(--shadow-card)]", className)}>
       {title && (
-        <div className="flex items-center justify-between border-b px-5 py-3.5">
+        <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
           <h2 className="text-sm font-semibold">{title}</h2>
           {action}
         </div>
       )}
-      <div className="p-5">{children}</div>
+      <div className={cn("p-5", bodyClassName)}>{children}</div>
     </section>
   );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+export function Stat({ label, value, hint, icon }: { label: string; value: ReactNode; hint?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="rounded-lg border bg-card p-5 shadow-[var(--shadow-card)]">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">{label}{icon}</div>
       <div className="mt-2 font-display text-3xl font-bold tabular-nums">{value}</div>
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
     </div>
   );
 }
 
-const TIER: Record<Tier, string> = {
-  Hot: "bg-hot-soft text-hot",
-  Warm: "bg-warning-soft text-warning",
-  Cold: "bg-muted text-muted-foreground",
-};
-
-export function ScoreBadge({ score, tier }: { score: number; tier: Tier }) {
-  return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums", TIER[tier])}>
-      {score} <span className="font-medium opacity-80">{tier}</span>
-    </span>
-  );
+export function scoreTone(score: number) {
+  return score >= 70 ? "bg-success-soft text-success" : score >= 50 ? "bg-warning-soft text-warning" : "bg-muted text-muted-foreground";
 }
 
-const STATUS: Record<LeadStatus, string> = {
-  qualified: "bg-accent text-accent-foreground",
-  approved: "bg-primary/10 text-primary",
-  rejected: "bg-muted text-muted-foreground line-through",
-  contacted: "bg-secondary text-secondary-foreground",
-  replied: "bg-success-soft text-success",
-  meeting: "bg-success text-primary-foreground",
-};
-const STATUS_LABEL: Record<LeadStatus, string> = {
-  qualified: "Awaiting approval",
-  approved: "Approved",
-  rejected: "Rejected",
-  contacted: "Contacted",
-  replied: "Replied",
-  meeting: "Meeting booked",
-};
+export function ScoreBadge({ score, className }: { score: number; className?: string }) {
+  return <span className={cn("inline-flex min-w-9 justify-center rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums", scoreTone(score), className)}>{score}</span>;
+}
 
-export function StatusBadge({ status }: { status: LeadStatus }) {
-  return <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium", STATUS[status])}>{STATUS_LABEL[status]}</span>;
+const QUAL: Record<Qualification, string> = {
+  Qualified: "bg-success-soft text-success",
+  "Needs review": "bg-warning-soft text-warning",
+  "Not qualified": "bg-muted text-muted-foreground",
+};
+export function QualificationBadge({ value }: { value: Qualification }) {
+  return <span className={cn("inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium", QUAL[value])}>{value}</span>;
+}
+
+const REVIEW: Record<ReviewStatus, string> = {
+  Pending: "border-border text-muted-foreground",
+  Approved: "border-primary/30 bg-primary/10 text-primary",
+  Rejected: "border-destructive/30 bg-destructive/10 text-destructive",
+  Saved: "border-hot/30 bg-hot-soft text-hot",
+};
+export function ReviewBadge({ value }: { value: ReviewStatus }) {
+  return <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium", REVIEW[value])}>{value}</span>;
+}
+
+const CSTATUS: Record<CampaignStatus, [string, string]> = {
+  draft: ["Draft", "bg-muted text-muted-foreground"],
+  running: ["Running", "bg-warning-soft text-warning"],
+  complete: ["Complete", "bg-success-soft text-success"],
+};
+export function CampaignStatusBadge({ status }: { status: CampaignStatus }) {
+  const [label, cls] = CSTATUS[status];
+  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>{status === "running" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />}{label}</span>;
+}
+
+export function DemoTag({ children = "DEMO" }: { children?: ReactNode }) {
+  return <span className="inline-flex rounded border border-warning/40 bg-warning-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning">{children}</span>;
 }
 
 export function Avatar({ name, className }: { name: string; className?: string }) {
-  const initials = name.split(" ").map((p) => p[0]).slice(0, 2).join("");
+  const initials = name.split(" ").map((p) => p.replace("Al-", "")[0]).slice(0, 2).join("");
   return <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground", className)}>{initials}</div>;
 }
 
