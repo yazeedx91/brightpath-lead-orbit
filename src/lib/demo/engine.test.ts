@@ -33,7 +33,7 @@ describe("lead engine", () => {
 
   it("draft includes first name, company and a signal or industry", () => {
     const d = getDataset();
-    const lead = runPipeline("x", icp, d).leads[0];
+    const lead = runPipeline("x", icp, d).leads[0]!;
     const co = d.companies.find((c) => c.id === lead.companyId)!;
     const ct = d.contacts.find((c) => c.id === lead.contactId)!;
     const draft = generateDraft(lead, co, ct, "friendly");

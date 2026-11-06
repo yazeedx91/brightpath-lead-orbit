@@ -11,7 +11,7 @@ import { INDUSTRIES } from "@/lib/demo/data";
 import { useDemo } from "@/lib/demo/store";
 
 export const Route = createFileRoute("/leads/")({
-  validateSearch: (s: Record<string, unknown>): { campaign?: string } => ({ campaign: typeof s.campaign === "string" ? s.campaign : undefined }),
+  validateSearch: (s: Record<string, unknown>): { campaign?: string | undefined } => ({ campaign: typeof s["campaign"] === "string" ? s["campaign"] : undefined }),
   head: () => pageHead("Leads", "Discovered and qualified prospects ranked by explainable AI lead score."),
   component: Leads,
 });
@@ -66,7 +66,7 @@ function Leads() {
           <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
-            {[["qualified", "Awaiting approval"], ["approved", "Approved"], ["contacted", "Contacted"], ["replied", "Replied"], ["meeting", "Meeting booked"], ["rejected", "Rejected"]].map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+            {[["qualified", "Awaiting approval"], ["approved", "Approved"], ["contacted", "Contacted"], ["replied", "Replied"], ["meeting", "Meeting booked"], ["rejected", "Rejected"]].map(([v, l]) => <SelectItem key={v} value={v!}>{l}</SelectItem>)}
           </SelectContent>
         </Select>
         {sel.size > 0 && (

@@ -118,8 +118,8 @@ export function interpretICP(text: string): ICP {
   const industries = INDUSTRIES.filter((i) => t.includes(i.toLowerCase()) || (i === "Healthcare SaaS" && t.includes("health")) || (i === "E-commerce" && t.includes("ecommerce")) || (i === "Cybersecurity" && t.includes("security")));
   const regions = REGIONS.filter((r) => t.includes(r.toLowerCase()) || (r === "MENA" && /(middle east|gulf|saudi|uae)/.test(t)) || (r === "North America" && /(us|usa|canada)\b/.test(t)) || (r === "Europe" && /(eu|uk|european)\b/.test(t)) || (r === "APAC" && /(asia|australia|singapore)/.test(t)));
   const size = t.match(/(\d[\d,]*)\s*(?:-|–|to)\s*(\d[\d,]*)/);
-  const employeeMin = size ? parseInt(size[1].replace(/,/g, ""), 10) : 50;
-  const employeeMax = size ? parseInt(size[2].replace(/,/g, ""), 10) : 2000;
+  const employeeMin = size ? parseInt(size[1]!.replace(/,/g, ""), 10) : 50;
+  const employeeMax = size ? parseInt(size[2]!.replace(/,/g, ""), 10) : 2000;
   const seniority = SENIORITIES.filter((s) =>
     (s === "C-Level" && /(c-level|chief|cxo|cro|coo)/.test(t)) ||
     (s === "VP" && /\bvps?\b|vice president/.test(t)) ||
@@ -131,7 +131,7 @@ export function interpretICP(text: string): ICP {
     (s === "Expansion" && t.includes("expan")) || (s === "New executive" && /(new exec|new leader|new cro|new vp)/.test(t)) ||
     (s === "Tech change" && /(migrat|crm change|tech change)/.test(t)));
   const exMatch = t.match(/exclud\w*\s+([^.]+)/);
-  const exclusions = exMatch ? exMatch[1].split(/,|and/).map((s) => s.trim()).filter(Boolean) : [];
+  const exclusions = exMatch ? exMatch[1]!.split(/,|and/).map((s) => s.trim()).filter(Boolean) : [];
   return {
     description: text,
     industries,
@@ -152,10 +152,10 @@ const OPENERS: Record<Tone, string[]> = {
 };
 
 export function generateDraft(lead: Lead, company: Company, contact: Contact, tone: Tone, variant = 0): Draft {
-  const first = contact.name.split(" ")[0];
+  const first = contact.name.split(" ")[0] ?? contact.name;
   const signal = company.signals[0];
   const hook = signal ? `I noticed ${company.name} ${signal.detail}` : `I came across ${company.name}'s work in ${company.industry.toLowerCase()}`;
-  const opener = OPENERS[tone][variant % 2].replace("{company}", company.name).replace("{first}", first);
+  const opener = OPENERS[tone][variant % 2]!.replace("{company}", company.name).replace("{first}", first);
   const value =
     contact.department === "Revenue" ? "teams like yours cut pipeline reporting time by 40%"
     : contact.department === "Marketing" ? "growth teams attribute pipeline to campaigns in real time"
@@ -189,7 +189,7 @@ export function generateDraft(lead: Lead, company: Company, contact: Contact, to
     leadId: lead.id,
     tone,
     variant,
-    subject: subjects[tone][variant % 2],
+    subject: subjects[tone][variant % 2]!,
     body,
     personalization: [
       `Name: ${first}`,

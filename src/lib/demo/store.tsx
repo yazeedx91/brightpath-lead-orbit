@@ -36,7 +36,7 @@ export function buildSeed(): State {
     campaigns.push({ id: c.id, name: c.name, icp: c.icp, createdAt: c.createdAt, status: "complete", stats: res.stats });
     const seen = new Set(leads.map((l) => l.contactId));
     res.leads.filter((l) => !seen.has(l.contactId)).forEach((l, i) => {
-      const status = l.tier === "Cold" ? (i % 3 === 0 ? "rejected" : "qualified") : SEED_STATUSES[i % SEED_STATUSES.length];
+      const status = l.tier === "Cold" ? (i % 3 === 0 ? "rejected" : "qualified") : SEED_STATUSES[i % SEED_STATUSES.length]!;
       leads.push({ ...l, status });
     });
   }

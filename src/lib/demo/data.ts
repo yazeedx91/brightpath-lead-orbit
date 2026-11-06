@@ -59,7 +59,7 @@ const SIGNAL_DETAIL: Record<SignalType, string[]> = {
   "Tech change": ["migrated to a new CRM", "adopted a cloud data warehouse", "is replacing legacy BI tools"],
 };
 
-const pick = <T,>(r: () => number, arr: T[]) => arr[Math.floor(r() * arr.length)];
+const pick = <T,>(r: () => number, arr: T[]) => arr[Math.floor(r() * arr.length)]!;
 
 let cached: Dataset | null = null;
 
@@ -77,7 +77,7 @@ export function getDataset(): Dataset {
     if (used.has(name)) continue;
     used.add(name);
     const region = pick(r, REGIONS);
-    const industry = INDUSTRIES[i % INDUSTRIES.length];
+    const industry = INDUSTRIES[i % INDUSTRIES.length]!;
     const employees = Math.round(20 + Math.pow(r(), 1.6) * 4000);
     const nSignals = Math.floor(r() * 4);
     const signals: Signal[] = [];
@@ -95,7 +95,7 @@ export function getDataset(): Dataset {
       industry,
       employees,
       revenueBand: employees < 100 ? "$1–10M" : employees < 500 ? "$10–50M" : employees < 1500 ? "$50–200M" : "$200M+",
-      hq: pick(r, CITIES[region]),
+      hq: pick(r, CITIES[region]!),
       region,
       techStack: Array.from(new Set([pick(r, TECH), pick(r, TECH), pick(r, TECH)])),
       fundingStage: pick(r, FUNDING),
@@ -107,7 +107,7 @@ export function getDataset(): Dataset {
       const seniority = pick(r, SENIORITIES);
       const first = pick(r, FIRST);
       let last = pick(r, LAST);
-      for (let k = 0; people.has(`${first} ${last}`) && k < LAST.length; k++) last = LAST[(LAST.indexOf(last) + 1) % LAST.length];
+      for (let k = 0; people.has(`${first} ${last}`) && k < LAST.length; k++) last = LAST[(LAST.indexOf(last) + 1) % LAST.length]!;
       people.add(`${first} ${last}`);
       const title = pick(r, TITLES[seniority]);
       const department = title.includes("Sales") || title.includes("Revenue") || title.includes("Account") ? "Revenue" : title.includes("Marketing") || title.includes("Growth") ? "Marketing" : title.includes("Data") || title.includes("Analy") ? "Data" : "Operations";

@@ -77,7 +77,7 @@ function Run() {
   if (!campaign) return <p className="text-sm text-muted-foreground">Campaign not found. <Link to="/campaigns" className="text-primary">Back to campaigns</Link></p>;
 
   const visible = events.slice(0, shown);
-  const counters = visible.reduce((a, e) => ({ ...a, ...e.c }), { scanned: 0, matched: 0, contacts: 0, qualified: 0, drafts: 0 } as Record<string, number>);
+  const counters = visible.reduce((a, e) => ({ ...a, ...e.c }), { scanned: 0, matched: 0, contacts: 0, qualified: 0, drafts: 0 } as Record<"scanned" | "matched" | "contacts" | "qualified" | "drafts", number>);
   const current = shown >= events.length ? STEPS.length : events[shown]?.step ?? 0;
   const finished = shown >= events.length;
 
@@ -133,7 +133,7 @@ function Run() {
               <div key={i} className="animate-in fade-in slide-in-from-bottom-1 duration-300">
                 <div className="flex gap-3">
                   <span className="shrink-0 tabular-nums text-muted-foreground">{String(Math.floor(i * 1.7)).padStart(2, "0")}s</span>
-                  <span className="shrink-0 text-primary">[{STEPS[e.step].label.split(" ")[0].toLowerCase()}]</span>
+                  <span className="shrink-0 text-primary">[{STEPS[e.step]!.label.split(" ")[0]!.toLowerCase()}]</span>
                   <span>{e.msg}</span>
                 </div>
                 {e.reason && (
