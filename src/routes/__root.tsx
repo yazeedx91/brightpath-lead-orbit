@@ -130,7 +130,7 @@ function RootComponent() {
         <AppShell>
           <Outlet />
         </AppShell>
-        <Toaster position="bottom-right" />
+        <Toaster position="top-right" offset={72} />
       </DemoProvider>
     </QueryClientProvider>
   );

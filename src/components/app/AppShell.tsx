@@ -6,7 +6,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarInset,
-  SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
+  SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 import { useDemo } from "@/lib/demo/store";
 import { GuideCard } from "./GuidedDemo";
@@ -30,6 +30,7 @@ function isActive(path: string, to: string) {
 function AppSidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { leads } = useDemo();
+  const { setOpenMobile } = useSidebar();
   const pending = leads.filter((l) => l.review === "Pending" && l.qualification !== "Low Fit").length;
   return (
     <Sidebar collapsible="icon" className="top-14 h-[calc(100svh-3.5rem)]">
@@ -41,7 +42,7 @@ function AppSidebar() {
               {NAV.map((n) => (
                 <SidebarMenuItem key={n.to}>
                   <SidebarMenuButton asChild isActive={isActive(path, n.to)} tooltip={n.label}>
-                    <Link to={n.to}><n.icon /><span>{n.label}</span></Link>
+                    <Link to={n.to} onClick={() => setOpenMobile(false)}><n.icon /><span>{n.label}</span></Link>
                   </SidebarMenuButton>
                   {n.to === "/leads" && pending > 0 && <SidebarMenuBadge title={`${pending} prospects awaiting review`} className="rounded-full bg-sidebar-accent px-1.5 text-[10px] font-semibold">{pending} to review</SidebarMenuBadge>}
                 </SidebarMenuItem>
@@ -105,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex flex-1">
           <AppSidebar />
           <SidebarInset className="min-w-0 bg-background">
-            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8">{children}</main>
+            <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8">{children}</div>
           </SidebarInset>
         </div>
       </div>

@@ -47,7 +47,7 @@ function Outreach() {
   useEffect(() => {
     if (saved) { setTone(saved.tone); setVariant(saved.variant); setSubject(saved.subject); setBody(saved.body); setGenerated(true); }
     else { setSubject(""); setBody(""); setGenerated(false); setVariant(0); }
-  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedId, !!saved]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generate = (t: Tone, v: number) => {
     if (!selectedId) return;

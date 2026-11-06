@@ -43,7 +43,7 @@ export function GuideCard() {
   if (!step) return null;
   const last = guideStep === total - 1;
   return (
-    <div className="fixed bottom-5 right-5 z-40 w-[340px] max-w-[calc(100vw-2.5rem)] rounded-lg border bg-card p-4 shadow-[var(--shadow-elevated)]">
+    <div className="fixed bottom-20 right-3 sm:bottom-5 sm:right-5 z-40 w-[340px] max-w-[calc(100vw-2.5rem)] rounded-lg border bg-card p-4 shadow-[var(--shadow-elevated)]">
       <div className="mb-2 flex items-center gap-2">
         <Compass className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold uppercase tracking-wider text-primary">Guided demo · {guideStep + 1}/{total}</span>

@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ArrowUpDown, Bookmark, Check, ExternalLink, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Bookmark, Check, Download, ExternalLink, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader, QualificationBadge, ReviewBadge, ScoreBadge, SyntheticTag, pageHead } from "@/components/app/ui";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDemo } from "@/lib/demo/store";
+import { downloadCsv, prospectsToCsv } from "@/lib/demo/csv";
 import type { ReviewStatus } from "@/lib/demo/types";
 
 export const Route = createFileRoute("/leads/")({
@@ -59,7 +60,7 @@ function Leads() {
 
   return (
     <>
-      <PageHeader title="Lead discovery" description={`${counts.all} prospects shown · ${counts.approved} approved`} actions={<SyntheticTag />} />
+      <PageHeader title="Lead discovery" description={`${counts.all} prospects shown · ${counts.approved} approved`} actions={<div className="flex items-center gap-2"><SyntheticTag /><Button variant="outline" size="sm" onClick={() => { downloadCsv(prospectsToCsv(rows), "projectx-synthetic-prospects.csv"); toast.success(`Exported ${rows.length} prospects`); }} disabled={rows.length === 0}><Download className="h-4 w-4" /> Export CSV</Button></div>} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
