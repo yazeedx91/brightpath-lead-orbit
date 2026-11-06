@@ -22,7 +22,7 @@ function Campaigns() {
             <div key={c.id} className="flex flex-col rounded-lg border bg-card p-5 shadow-[var(--shadow-card)]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="flex items-center gap-2 font-semibold">{c.name}{c.isSample && <DemoTag>Demo sample</DemoTag>}</h2>
+                  <h2 className="flex min-w-0 items-center gap-2 font-semibold"><span className="min-w-0 break-words [overflow-wrap:anywhere]">{c.name}</span>{c.isSample && <DemoTag>Demo sample</DemoTag>}</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">Created {formatTime(c.createdAt)} · {c.objective}</p>
                 </div>
                 <CampaignStatusBadge status={c.status} />

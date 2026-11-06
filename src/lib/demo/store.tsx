@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { parseStoredState } from "./persist";
 import { getDataset } from "./data";
 import { SAMPLE_CAMPAIGN, generateDraft, runPipeline } from "./engine";
 import type { ActivityEvent, Campaign, CampaignInput, Company, Contact, Draft, Lead, ReviewStatus, Tone } from "./types";
@@ -80,7 +81,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState(JSON.parse(raw) as State);
+      const saved = parseStoredState<State>(raw);
+      if (saved) setState(saved);
+      else if (raw) localStorage.removeItem(STORAGE_KEY);
     } catch { /* ignore */ }
     loaded.current = true;
   }, []);

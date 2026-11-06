@@ -97,7 +97,7 @@ function Overview() {
               return (
                 <li key={e.id} className="flex gap-3 px-5 py-3">
                   <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground"><Icon className="h-3.5 w-3.5" /></div>
-                  <div className="min-w-0"><div className="text-sm">{e.message}</div><div className="text-[11px] text-muted-foreground">{formatTime(e.at)}</div></div>
+                  <div className="min-w-0"><div className="text-sm [overflow-wrap:anywhere]">{e.message}</div><div className="text-[11px] text-muted-foreground">{formatTime(e.at)}</div></div>
                 </li>
               );
             })}
@@ -110,7 +110,7 @@ function Overview() {
           {campaigns.slice(0, 4).map((c) => (
             <Link key={c.id} to="/campaigns/$id/run" params={{ id: c.id }} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/40">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 truncate text-sm font-medium">{c.name}{c.isSample && <DemoTag />}</div>
+                <div className="flex min-w-0 items-center gap-2 text-sm font-medium"><span className="truncate">{c.name}</span>{c.isSample && <DemoTag />}</div>
                 <div className="truncate text-xs text-muted-foreground">{c.industry} · {c.country}</div>
               </div>
               <div className="hidden text-right text-xs text-muted-foreground sm:block"><span className="font-semibold text-foreground tabular-nums">{c.stats.qualified}</span> qualified of {c.stats.discovered}</div>

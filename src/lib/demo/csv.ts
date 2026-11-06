@@ -6,7 +6,9 @@ export const CSV_HEADERS = [
 ] as const;
 
 function cell(v: string | number): string {
-  const s = String(v);
+  let s = String(v);
+  // Neutralise spreadsheet formulas (CSV injection).
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

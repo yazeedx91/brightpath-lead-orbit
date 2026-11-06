@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Info, Plus, Rocket, RotateCcw, Save, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ export function CampaignForm({ initial, campaignId, isSample }: { initial: Campa
   const validate = () => {
     const e: Record<string, string> = {};
     if (!v.name.trim()) e["name"] = "Give the campaign a name";
+    else if (v.name.trim().length > 120) e["name"] = "Keep the name under 120 characters";
     if (!v.industry) e["industry"] = "Select a target industry";
     if (!v.country) e["country"] = "Select a target country";
     if (v.employeeMin > v.employeeMax) e["employees"] = "Minimum must be below maximum";
@@ -40,9 +41,15 @@ export function CampaignForm({ initial, campaignId, isSample }: { initial: Campa
     return Object.keys(e).length === 0;
   };
 
+  // Guard against double-clicks creating duplicate campaigns.
+  const savedId = useRef<string | undefined>(campaignId);
+  const busy = useRef(false);
   const save = () => {
-    if (!validate()) return null;
-    const id = saveCampaign(v, campaignId);
+    if (busy.current || !validate()) return null;
+    busy.current = true;
+    const id = saveCampaign(v, savedId.current);
+    savedId.current = id;
+    setTimeout(() => { busy.current = false; }, 600);
     return id;
   };
   const onSave = () => { const id = save(); if (id) { toast.success("Campaign saved"); if (!campaignId) navigate({ to: "/campaigns/$id/edit", params: { id } }); } };
