@@ -66,7 +66,9 @@ interface Store extends State {
   reset: () => void;
 }
 
-const Ctx = createContext<Store | null>(null);
+// Keep one context instance across hot reloads so provider and consumers always match.
+const g = globalThis as unknown as { __projectxDemoCtx?: React.Context<Store | null> };
+const Ctx = g.__projectxDemoCtx ?? (g.__projectxDemoCtx = createContext<Store | null>(null));
 const nowIso = () => new Date().toISOString();
 let evSeq = 0;
 const ev = (kind: ActivityEvent["kind"], message: string): ActivityEvent => ({ id: `ev-${Date.now().toString(36)}-${evSeq++}`, at: nowIso(), kind, message });
