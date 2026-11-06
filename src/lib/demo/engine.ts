@@ -24,7 +24,7 @@ export function scoreLead(icp: ICP, company: Company, contact: Contact): { score
 
   const wanted = icp.signals.length ? icp.signals : SIGNAL_TYPES;
   const matching = company.signals.filter((s) => wanted.includes(s.type));
-  const intentValue = Math.min(1, matching.length * 0.45 + (company.signals.length - matching.length) * 0.1);
+  const intentValue = Math.min(1, matching.length * 0.6 + (company.signals.length - matching.length) * 0.25);
 
   const senMatch = icp.seniority.length === 0 || icp.seniority.includes(contact.seniority);
   const deptMatch = icp.departments.length === 0 || icp.departments.includes(contact.department);
@@ -32,7 +32,7 @@ export function scoreLead(icp: ICP, company: Company, contact: Contact): { score
 
   const freshest = company.signals.length ? Math.min(...company.signals.map((s) => s.daysAgo)) : 365;
   const newInRole = contact.tenureMonths <= 9;
-  const timingValue = Math.min(1, (freshest <= 30 ? 0.6 : freshest <= 90 ? 0.35 : 0.1) + (newInRole ? 0.4 : 0.1));
+  const timingValue = Math.min(1, (freshest <= 45 ? 0.7 : freshest <= 90 ? 0.5 : 0.2) + (newInRole ? 0.4 : 0.15));
 
   const mk = (key: ScoreFactor["key"], label: string, weight: number, value: number, reason: string): ScoreFactor => ({
     key, label, weight, value: Math.round(value * 100) / 100, points: Math.round(value * weight), reason,

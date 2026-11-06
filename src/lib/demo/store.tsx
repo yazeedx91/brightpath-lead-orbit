@@ -9,7 +9,7 @@ interface State {
   drafts: Record<string, Draft>;
 }
 
-const STORAGE_KEY = "projectx-demo-v1";
+const STORAGE_KEY = "projectx-demo-v2";
 
 const SEED_STATUSES: LeadStatus[] = ["meeting", "replied", "contacted", "contacted", "approved", "qualified", "replied", "contacted", "qualified", "rejected"];
 
@@ -34,7 +34,8 @@ export function buildSeed(): State {
   for (const c of icps) {
     const res = runPipeline(c.id, c.icp, data);
     campaigns.push({ id: c.id, name: c.name, icp: c.icp, createdAt: c.createdAt, status: "complete", stats: res.stats });
-    res.leads.forEach((l, i) => {
+    const seen = new Set(leads.map((l) => l.contactId));
+    res.leads.filter((l) => !seen.has(l.contactId)).forEach((l, i) => {
       const status = l.tier === "Cold" ? (i % 3 === 0 ? "rejected" : "qualified") : SEED_STATUSES[i % SEED_STATUSES.length];
       leads.push({ ...l, status });
     });

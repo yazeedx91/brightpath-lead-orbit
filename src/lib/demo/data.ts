@@ -70,6 +70,7 @@ export function getDataset(): Dataset {
   const companies: Company[] = [];
   const contacts: Contact[] = [];
   const used = new Set<string>();
+  const people = new Set<string>();
   for (let i = 0; companies.length < 120; i++) {
     let name = `${pick(r, PREFIX)} ${pick(r, SUFFIX)}`;
     if (used.has(name)) name = `${name} ${["Co", "Group", "Global"][i % 3]}`;
@@ -105,7 +106,9 @@ export function getDataset(): Dataset {
     for (let c = 0; c < nContacts; c++) {
       const seniority = pick(r, SENIORITIES);
       const first = pick(r, FIRST);
-      const last = pick(r, LAST);
+      let last = pick(r, LAST);
+      for (let k = 0; people.has(`${first} ${last}`) && k < LAST.length; k++) last = LAST[(LAST.indexOf(last) + 1) % LAST.length];
+      people.add(`${first} ${last}`);
       const title = pick(r, TITLES[seniority]);
       const department = title.includes("Sales") || title.includes("Revenue") || title.includes("Account") ? "Revenue" : title.includes("Marketing") || title.includes("Growth") ? "Marketing" : title.includes("Data") || title.includes("Analy") ? "Data" : "Operations";
       const tenureMonths = 1 + Math.floor(r() * 60);
