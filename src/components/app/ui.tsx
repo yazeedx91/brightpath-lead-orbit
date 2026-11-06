@@ -6,8 +6,8 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        {eyebrow && <div className="mb-1 text-xs font-medium uppercase tracking-wider text-primary">{eyebrow}</div>}
-        <h1 className="text-2xl font-bold text-foreground md:text-[28px]">{title}</h1>
+        {eyebrow && <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-primary">{eyebrow}</div>}
+        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground md:text-[28px]">{title}</h1>
         {description && <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -20,7 +20,7 @@ export function Panel({ title, action, children, className, bodyClassName }: { t
     <section className={cn("rounded-lg border bg-card shadow-[var(--shadow-card)]", className)}>
       {title && (
         <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
-          <h2 className="text-sm font-semibold">{title}</h2>
+          <h2 className="font-display text-sm font-semibold tracking-tight">{title}</h2>
           {action}
         </div>
       )}
@@ -31,10 +31,13 @@ export function Panel({ title, action, children, className, bodyClassName }: { t
 
 export function Stat({ label, value, hint, icon }: { label: string; value: ReactNode; hint?: ReactNode; icon?: ReactNode }) {
   return (
-    <div className="rounded-lg border bg-card p-5 shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">{label}{icon}</div>
-      <div className="mt-2 font-display text-3xl font-bold tabular-nums">{value}</div>
-      {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+    <div className="flex h-full flex-col rounded-lg border bg-card p-4 shadow-[var(--shadow-card)]">
+      <div className="flex items-start justify-between gap-2">
+        <span className="truncate text-xs font-medium text-muted-foreground" title={label}>{label}</span>
+        {icon && <span className="shrink-0 text-muted-foreground/70 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}
+      </div>
+      <div className="mt-3 font-display text-[28px] font-bold leading-none tabular-nums">{value}</div>
+      <div className="mt-auto truncate pt-2 text-xs text-muted-foreground">{hint ?? "\u00a0"}</div>
     </div>
   );
 }
@@ -44,16 +47,16 @@ export function scoreTone(score: number) {
 }
 
 export function ScoreBadge({ score, className }: { score: number; className?: string }) {
-  return <span className={cn("inline-flex min-w-9 justify-center rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums", scoreTone(score), className)}>{score}</span>;
+  return <span className={cn("inline-flex h-6 min-w-9 items-center justify-center rounded-md px-2 text-xs font-semibold tabular-nums", scoreTone(score), className)}>{score}</span>;
 }
 
 const QUAL: Record<Qualification, string> = {
-  Qualified: "bg-success-soft text-success",
-  Review: "bg-warning-soft text-warning",
-  "Low Fit": "bg-muted text-muted-foreground",
+  Qualified: "border-success/25 bg-success-soft text-success",
+  Review: "border-warning/25 bg-warning-soft text-warning",
+  "Low Fit": "border-border bg-muted text-muted-foreground",
 };
 export function QualificationBadge({ value }: { value: Qualification }) {
-  return <span className={cn("inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium", QUAL[value])}>{value}</span>;
+  return <span className={cn("inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-medium", QUAL[value])}>{value}</span>;
 }
 
 const REVIEW: Record<ReviewStatus, string> = {
@@ -63,17 +66,17 @@ const REVIEW: Record<ReviewStatus, string> = {
   Saved: "border-hot/30 bg-hot-soft text-hot",
 };
 export function ReviewBadge({ value }: { value: ReviewStatus }) {
-  return <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium", REVIEW[value])}>{value}</span>;
+  return <span className={cn("inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-medium", REVIEW[value])}>{value}</span>;
 }
 
 const CSTATUS: Record<CampaignStatus, [string, string]> = {
-  draft: ["Draft", "bg-muted text-muted-foreground"],
-  running: ["Running", "bg-warning-soft text-warning"],
-  complete: ["Complete", "bg-success-soft text-success"],
+  draft: ["Draft", "border-border bg-muted text-muted-foreground"],
+  running: ["Running", "border-warning/25 bg-warning-soft text-warning"],
+  complete: ["Complete", "border-success/25 bg-success-soft text-success"],
 };
 export function CampaignStatusBadge({ status }: { status: CampaignStatus }) {
   const [label, cls] = CSTATUS[status];
-  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>{status === "running" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />}{label}</span>;
+  return <span className={cn("inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-medium", cls)}>{status === "running" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warning" />}{label}</span>;
 }
 
 export function SyntheticTag({ compact = false }: { compact?: boolean }) {

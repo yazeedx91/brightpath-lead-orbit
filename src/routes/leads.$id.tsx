@@ -20,7 +20,7 @@ function LeadProfile() {
   const { id } = Route.useParams();
   const { leads, companies, contacts, campaigns, setReview } = useDemo();
   const lead = leads.find((l) => l.id === id);
-  if (!lead) return <p className="text-sm text-muted-foreground">Prospect not found. <Link to="/leads" search={{ campaign: undefined }} className="text-primary">Back to leads</Link></p>;
+  if (!lead) return <p className="text-sm text-muted-foreground">Prospect not found. <Link to="/leads" search={{ campaign: undefined, qual: undefined }} className="text-primary">Back to leads</Link></p>;
   const ct = contacts.get(lead.contactId)!;
   const co = companies.get(lead.companyId)!;
   const campaign = campaigns.find((c) => c.id === lead.campaignId);
@@ -30,7 +30,7 @@ function LeadProfile() {
 
   return (
     <>
-      <Link to="/leads" search={{ campaign: lead.campaignId }} className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3 w-3" /> Back to leads</Link>
+      <Link to="/leads" search={{ campaign: lead.campaignId, qual: undefined }} className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3 w-3" /> Back to leads</Link>
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center">
         <Avatar name={ct.name} className="h-14 w-14 text-base" />
         <div className="flex-1">
@@ -52,6 +52,7 @@ function LeadProfile() {
               <div className="text-xs font-medium text-muted-foreground">Lead score</div>
               <div className={cn("mt-2 flex h-24 w-24 items-center justify-center rounded-full font-display text-4xl font-bold tabular-nums", scoreTone(lead.score))}>{lead.score}</div>
               <div className="mt-2 text-xs text-muted-foreground">out of 100</div>
+              <div className="mt-3"><QualificationBadge value={lead.qualification} /></div>
             </div>
             <div className="rounded-lg border bg-card p-5 shadow-[var(--shadow-card)]">
               <div className="text-xs font-semibold uppercase tracking-wider text-primary">Recommended next action</div>
@@ -105,7 +106,7 @@ function LeadProfile() {
             <div className="mb-3 font-semibold">{ct.name}</div>
             <dl className="space-y-3 text-sm">
               <Row icon={Users} k="Position" v={`${ct.title} · ${ct.seniority}`} />
-              <Row icon={Mail} k="Email (fictional, not verified)" v={ct.email} />
+              <Row icon={Mail} k="Email (fictional, not verified)" v={<>{ct.email.split("@")[0]}<wbr />@{ct.email.split("@")[1]}</>} />
               <Row icon={Zap} k="Time in role" v={`${ct.tenureMonths} months`} />
             </dl>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{ct.summary}</p>
@@ -135,7 +136,7 @@ function LeadProfile() {
   );
 }
 
-function Row({ icon: Icon, k, v }: { icon: typeof Mail; k: string; v: string }) {
+function Row({ icon: Icon, k, v }: { icon: typeof Mail; k: string; v: React.ReactNode }) {
   return (
     <div className="flex gap-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -166,7 +167,7 @@ function OutreachPanel({ leadId }: { leadId: string }) {
     catch { toast.error("Copy failed — select the text and copy manually"); }
   };
   return (
-    <Panel title="Outreach draft" action={<span className="text-xs text-muted-foreground">Not sent: demo only</span>}>
+    <Panel title="Outreach draft" action={<span className="inline-flex h-5 items-center rounded-full border bg-muted px-2 text-[11px] font-medium text-muted-foreground">Not sent · demo only</span>}>
       {!has ? (
         <div className="flex flex-col items-start gap-3">
           <p className="text-sm text-muted-foreground">Write a personalised email using this prospect's name, title, company, industry, the fictional company context and your offering.</p>
@@ -174,13 +175,15 @@ function OutreachPanel({ leadId }: { leadId: string }) {
         </div>
       ) : (
         <div className="space-y-3">
-          <Input value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="Subject" />
-          <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={12} aria-label="Email body" />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={generate}><RefreshCw className="h-4 w-4" /> Regenerate</Button>
-            <Button variant="outline" onClick={onCopy}><Copy className="h-4 w-4" /> Copy draft</Button>
-            <Button onClick={onSave} disabled={!subject.trim() || !body.trim()}><Save className="h-4 w-4" /> Save draft</Button>
-            {saved && <span className="ml-auto text-xs text-muted-foreground">Saved {formatTime(saved.savedAt)}</span>}
+          <label className="block space-y-1.5"><span className="text-xs font-medium text-muted-foreground">Subject</span><Input value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
+          <label className="block space-y-1.5"><span className="text-xs font-medium text-muted-foreground">Message</span><Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={12} className="leading-relaxed" /></label>
+          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+            <span className="text-xs text-muted-foreground">{saved ? `Saved ${formatTime(saved.savedAt)}` : "Not saved yet"}</span>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button variant="ghost" onClick={generate}><RefreshCw className="h-4 w-4" /> Regenerate</Button>
+              <Button variant="outline" onClick={onCopy}><Copy className="h-4 w-4" /> Copy</Button>
+              <Button onClick={onSave} disabled={!subject.trim() || !body.trim()}><Save className="h-4 w-4" /> Save draft</Button>
+            </div>
           </div>
         </div>
       )}

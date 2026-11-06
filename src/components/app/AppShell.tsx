@@ -3,7 +3,7 @@ import { BarChart3, LayoutDashboard, Mail, Megaphone, PlusCircle, RotateCcw, Spa
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarInset,
   SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
@@ -43,7 +43,7 @@ function AppSidebar() {
                   <SidebarMenuButton asChild isActive={isActive(path, n.to)} tooltip={n.label}>
                     <Link to={n.to}><n.icon /><span>{n.label}</span></Link>
                   </SidebarMenuButton>
-                  {n.to === "/leads" && pending > 0 && <SidebarMenuBadge>{pending}</SidebarMenuBadge>}
+                  {n.to === "/leads" && pending > 0 && <SidebarMenuBadge title={`${pending} prospects awaiting review`} className="rounded-full bg-sidebar-accent px-1.5 text-[10px] font-semibold">{pending} to review</SidebarMenuBadge>}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -93,11 +93,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Reset the demo?</AlertDialogTitle>
-                <AlertDialogDescription>All campaigns, review decisions and saved drafts go back to the original sample data.</AlertDialogDescription>
+                <AlertDialogDescription>This restores the original Synthetic Demo Dataset and sample campaign. Custom campaigns, review decisions and saved drafts will be removed. This cannot be undone.</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { reset(); toast.success("Demo data restored"); }}>Reset</AlertDialogAction>
+                <AlertDialogAction className={buttonVariants({ variant: "destructive" })} onClick={() => { reset(); toast.success("Demo data restored"); }}>Reset demo</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

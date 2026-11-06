@@ -12,7 +12,10 @@ import { useDemo } from "@/lib/demo/store";
 import type { ReviewStatus } from "@/lib/demo/types";
 
 export const Route = createFileRoute("/leads/")({
-  validateSearch: (s: Record<string, unknown>): { campaign?: string | undefined } => ({ campaign: typeof s["campaign"] === "string" ? s["campaign"] : undefined }),
+  validateSearch: (s: { campaign?: unknown; qual?: unknown }): { campaign?: string | undefined; qual?: string | undefined } => ({
+    campaign: typeof s.campaign === "string" ? s.campaign : undefined,
+    qual: typeof s.qual === "string" ? s.qual : undefined,
+  }),
   head: () => pageHead("Leads", "Discovered prospects with lead scores, qualification and review status."),
   component: Leads,
 });
@@ -21,10 +24,10 @@ type SortKey = "score" | "company" | "contact" | "size";
 
 function Leads() {
   const { leads, campaigns, companies, contacts, setReview } = useDemo();
-  const { campaign } = Route.useSearch();
+  const { campaign, qual: qualParam } = Route.useSearch();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
-  const [qual, setQual] = useState("all");
+  const [qual, setQual] = useState(qualParam ?? "all");
   const [rev, setRev] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "score", dir: -1 });
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -56,13 +59,13 @@ function Leads() {
 
   return (
     <>
-      <PageHeader title="Lead discovery" description={`${counts.all} prospects shown · ${counts.approved} approved. Source: Synthetic Demo Dataset (fictional companies and contacts).`} />
+      <PageHeader title="Lead discovery" description={`${counts.all} prospects shown · ${counts.approved} approved`} actions={<SyntheticTag />} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8" placeholder="Search prospects" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search prospects" />
         </div>
-        <Select value={campaign ?? "all"} onValueChange={(v) => navigate({ to: "/leads", search: { campaign: v === "all" ? undefined : v } })}>
+        <Select value={campaign ?? "all"} onValueChange={(v) => navigate({ to: "/leads", search: { campaign: v === "all" ? undefined : v, qual: undefined } })}>
           <SelectTrigger className="w-56" aria-label="Campaign"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="all">All campaigns</SelectItem>{campaigns.filter((c) => c.status === "complete").map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
         </Select>
@@ -85,39 +88,31 @@ function Leads() {
       </div>
 
       <div className="overflow-x-auto rounded-lg border bg-card shadow-[var(--shadow-card)]">
-        <table className="w-full min-w-[1180px] text-sm">
+        <table className="w-full min-w-[680px] text-sm">
           <thead className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-            <tr>
-              <th className="w-10 px-4 py-3"><Checkbox checked={rows.length > 0 && sel.size === rows.length} onCheckedChange={(v) => setSel(v ? new Set(rows.map((r) => r.l.id)) : new Set())} aria-label="Select all" /></th>
-              <th className="px-3 py-3 font-medium">ID</th>
-              <th className="px-3 py-3"><SortHead k="company">Company</SortHead></th>
-              <th className="px-3 py-3"><SortHead k="contact">Contact person</SortHead></th>
-              <th className="px-3 py-3 font-medium">Job title</th>
-              <th className="px-3 py-3 font-medium">Industry</th>
-              <th className="px-3 py-3 font-medium">Location</th>
-              <th className="px-3 py-3"><SortHead k="size">Company size</SortHead></th>
-              <th className="px-3 py-3"><SortHead k="score">Lead score</SortHead></th>
-              <th className="px-3 py-3 font-medium">Qualification</th>
-              <th className="px-3 py-3 font-medium">Review</th>
-              <th className="px-3 py-3 text-right font-medium">Actions</th>
+            <tr className="[&>th]:h-10 [&>th]:px-3 [&>th]:font-medium">
+              <th className="w-10 !pl-4"><Checkbox checked={rows.length > 0 && sel.size === rows.length} onCheckedChange={(v) => setSel(v ? new Set(rows.map((r) => r.l.id)) : new Set())} aria-label="Select all" /></th>
+              <th><SortHead k="company">Company</SortHead></th>
+              <th><SortHead k="contact">Decision-maker</SortHead></th>
+              <th className="hidden xl:table-cell">Location</th>
+              <th className="hidden text-right xl:table-cell"><SortHead k="size">Employees</SortHead></th>
+              <th className="text-right"><SortHead k="score">Score</SortHead></th>
+              <th>Status</th>
+              <th className="!pr-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {rows.map(({ l, co, ct }) => (
-              <tr key={l.id} className="hover:bg-muted/40">
-                <td className="px-4 py-3"><Checkbox checked={sel.has(l.id)} onCheckedChange={(v) => { const n = new Set(sel); if (v) n.add(l.id); else n.delete(l.id); setSel(n); }} aria-label={`Select ${ct.name}`} /></td>
-                <td className="px-3 py-3"><div className="font-mono text-xs">{co.prospectId}</div><SyntheticTag compact /></td>
-                <td className="px-3 py-3 font-medium">{co.name}</td>
-                <td className="px-3 py-3"><Link to="/leads/$id" params={{ id: l.id }} className="font-medium text-primary hover:underline">{ct.name}</Link></td>
-                <td className="px-3 py-3 text-muted-foreground">{ct.title}</td>
-                <td className="px-3 py-3 text-muted-foreground">{co.sector}</td>
-                <td className="px-3 py-3 text-muted-foreground">{co.city}, {co.country}</td>
-                <td className="px-3 py-3 tabular-nums text-muted-foreground">{co.employees}<div className="text-[11px]">{co.sizeCategory}</div></td>
-                <td className="px-3 py-3"><ScoreBadge score={l.score} /></td>
-                <td className="px-3 py-3"><QualificationBadge value={l.qualification} /></td>
-                <td className="px-3 py-3"><ReviewBadge value={l.review} /></td>
-                <td className="px-3 py-3">
-                  <div className="flex justify-end gap-1">
+              <tr key={l.id} className="h-16 hover:bg-muted/40 [&>td]:px-3">
+                <td className="!pl-4"><Checkbox checked={sel.has(l.id)} onCheckedChange={(v) => { const n = new Set(sel); if (v) n.add(l.id); else n.delete(l.id); setSel(n); }} aria-label={`Select ${ct.name}`} /></td>
+                <td><div className="font-medium">{co.name}</div><div className="text-xs text-muted-foreground"><span className="font-mono">{co.prospectId}</span> · {co.sector}</div></td>
+                <td><Link to="/leads/$id" params={{ id: l.id }} className="whitespace-nowrap font-medium text-primary hover:underline">{ct.name}</Link><div className="text-xs text-muted-foreground">{ct.title}<span className="xl:hidden"> · {co.city}</span></div></td>
+                <td className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">{co.city}</td>
+                <td className="hidden text-right tabular-nums text-muted-foreground xl:table-cell">{co.employees}</td>
+                <td className="text-right"><ScoreBadge score={l.score} /></td>
+                <td><div className="flex flex-col items-start gap-1 xl:flex-row xl:items-center"><QualificationBadge value={l.qualification} /><ReviewBadge value={l.review} /></div></td>
+                <td className="!pr-4">
+                  <div className="flex justify-end gap-0.5">
                     <IconAction label="Approve" active={l.review === "Approved"} onClick={() => act([l.id], "Approved")}><Check className="h-4 w-4" /></IconAction>
                     <IconAction label="Reject" active={l.review === "Rejected"} onClick={() => act([l.id], "Rejected")}><X className="h-4 w-4" /></IconAction>
                     <IconAction label="Save" active={l.review === "Saved"} onClick={() => act([l.id], "Saved")}><Bookmark className="h-4 w-4" /></IconAction>
@@ -126,7 +121,7 @@ function Leads() {
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={12} className="py-14 text-center text-sm text-muted-foreground">No prospects match these filters.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={8} className="py-14 text-center text-sm text-muted-foreground">No prospects match these filters.</td></tr>}
           </tbody>
         </table>
       </div>

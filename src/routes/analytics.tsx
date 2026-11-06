@@ -68,7 +68,7 @@ function Analytics() {
           <div className="h-56">
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={qualData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2} stroke="none">
+                <Pie data={qualData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2} stroke="var(--card)" strokeWidth={2} isAnimationActive={false} startAngle={90} endAngle={-270}>
                   {qualData.map((d) => <Cell key={d.name} fill={d.color} />)}
                 </Pie>
                 <Tooltip />
@@ -102,7 +102,7 @@ function Analytics() {
                 <XAxis dataKey="range" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
                 <Tooltip cursor={{ fill: "var(--muted)" }} />
-                <Bar dataKey="Prospects" radius={[4, 4, 0, 0]}>{bands.map((d) => <Cell key={d.range} fill={d.color} />)}</Bar>
+                <Bar dataKey="Prospects" isAnimationActive={false} radius={[4, 4, 0, 0]}>{bands.map((d) => <Cell key={d.range} fill={d.color} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -114,7 +114,7 @@ function Analytics() {
                 <XAxis dataKey="range" tickLine={false} axisLine={false} fontSize={11} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
                 <Tooltip cursor={{ fill: "var(--muted)" }} />
-                <Bar dataKey="Prospects" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="Prospects" isAnimationActive={false} radius={[4, 4, 0, 0]}>
                   {dist.map((d) => <Cell key={d.range} fill="var(--chart-2)" />)}
                 </Bar>
               </BarChart>

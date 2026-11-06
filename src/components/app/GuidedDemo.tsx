@@ -5,12 +5,11 @@ import { Button } from "@/components/ui/button";
 import { SAMPLE_ID, useDemo } from "@/lib/demo/store";
 
 const STEPS = [
-  { title: "Campaign brief", body: "This editable sample brief tells the agent who to target: Saudi logistics companies and their operations leaders. Click Next to run the AI agent." },
-  { title: "AI agent at work", body: "The agent works through 8 stages, from understanding the brief to drafting outreach. Everything here is a local simulation." },
-  { title: "Review discovered leads", body: "Every prospect has a lead score, a qualification label and a review status. Approve, reject or save prospects from the table." },
-  { title: "Explainable lead profile", body: "See exactly why the agent selected this prospect: the score breakdown, its reasons and the recommended next action." },
-  { title: "Personalised outreach", body: "Generate a draft from the prospect's data, edit it, save it or copy it. Nothing is ever sent." },
-  { title: "Campaign analytics", body: "All metrics come from the same demo data and update as you approve leads and save drafts." },
+  { title: "Create a campaign", body: "A campaign tells the agent who to target. This editable sample brief focuses on Saudi logistics companies and their operations leaders." },
+  { title: "Launch the agent", body: "The agent validates the brief and works through each stage locally. Use Skip to results at any time." },
+  { title: "Discover prospects", body: "Every discovered prospect appears here with a lead score, qualification and review status. Search, filter, sort, approve, reject or save." },
+  { title: "Qualify leads", body: "Each score is explained: four weighted components, reasons for selection and a recommended next action." },
+  { title: "Generate outreach", body: "Draft a personalised email from the prospect's role, company and context. Edit, save or copy it. Nothing is ever sent." },
 ];
 
 export function useGuide() {
@@ -26,10 +25,9 @@ export function useGuide() {
         case 1:
           if (withAction) runCampaign(SAMPLE_ID);
           return navigate({ to: "/campaigns/$id/run", params: { id: SAMPLE_ID } });
-        case 2: return navigate({ to: "/leads", search: { campaign: SAMPLE_ID } });
-        case 3: return topLead ? navigate({ to: "/leads/$id", params: { id: topLead.id } }) : navigate({ to: "/leads", search: { campaign: SAMPLE_ID } });
-        case 4: return navigate({ to: "/outreach", search: { lead: topLead?.id } });
-        default: return navigate({ to: "/analytics" });
+        case 2: return navigate({ to: "/leads", search: { campaign: SAMPLE_ID, qual: undefined } });
+        case 3: return topLead ? navigate({ to: "/leads/$id", params: { id: topLead.id } }) : navigate({ to: "/leads", search: { campaign: SAMPLE_ID, qual: undefined } });
+        default: return navigate({ to: "/outreach", search: { lead: topLead?.id } });
       }
     },
     [navigate, runCampaign, setGuideStep, topLead],
@@ -53,13 +51,13 @@ export function GuideCard() {
       </div>
       <div className="font-display text-sm font-bold">{step.title}</div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.body}</p>
-      <div className="mt-3 flex h-1 gap-1">
+      <div className="mt-3 flex h-1 gap-1" aria-hidden>
         {STEPS.map((s, i) => <span key={s.title} className={i <= guideStep ? "flex-1 rounded-full bg-primary" : "flex-1 rounded-full bg-muted"} />)}
       </div>
       <div className="mt-3 flex justify-between">
         <Button size="sm" variant="ghost" disabled={guideStep === 0} onClick={() => go(guideStep - 1, false)}><ArrowLeft className="h-3.5 w-3.5" /> Back</Button>
         {last ? (
-          <Button size="sm" onClick={() => setGuideStep(null)}>Finish</Button>
+          <Button size="sm" onClick={() => setGuideStep(null)}>Finish guide</Button>
         ) : (
           <Button size="sm" onClick={() => go(guideStep + 1, true)}>Next <ArrowRight className="h-3.5 w-3.5" /></Button>
         )}

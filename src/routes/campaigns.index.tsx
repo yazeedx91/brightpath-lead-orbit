@@ -38,7 +38,7 @@ function Campaigns() {
               <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
                 <Button size="sm" variant="outline" asChild><Link to="/campaigns/$id/edit" params={{ id: c.id }}><Pencil className="h-3.5 w-3.5" /> Edit</Link></Button>
                 <Button size="sm" variant="outline" asChild><Link to="/campaigns/$id/run" params={{ id: c.id }}><Activity className="h-3.5 w-3.5" /> {c.status === "complete" ? "View results" : "Activity"}</Link></Button>
-                {c.status === "complete" && <Button size="sm" variant="outline" asChild><Link to="/leads" search={{ campaign: c.id }}>Leads</Link></Button>}
+                {c.status === "complete" && <Button size="sm" variant="outline" asChild><Link to="/leads" search={{ campaign: c.id, qual: undefined }}>Leads</Link></Button>}
                 {c.status !== "running" && (
                   <Button size="sm" className="ml-auto" onClick={() => { runCampaign(c.id); navigate({ to: "/campaigns/$id/run", params: { id: c.id } }); }}>
                     <Play className="h-3.5 w-3.5" /> {c.status === "complete" ? "Run again" : "Run AI agent"}

@@ -120,7 +120,8 @@ function Outreach() {
                 <div className="mt-4 space-y-4">
                   <div><label className="text-xs font-medium text-muted-foreground" htmlFor="subject">Subject</label><Input id="subject" className="mt-1.5" value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
                   <div><label className="text-xs font-medium text-muted-foreground" htmlFor="body">Message</label><Textarea id="body" className="mt-1.5 min-h-[360px] text-sm leading-relaxed" value={body} onChange={(e) => setBody(e.target.value)} /></div>
-                  <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+                  <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-4">
+                    <span className="mr-auto inline-flex h-5 items-center rounded-full border bg-muted px-2 text-[11px] font-medium text-muted-foreground">Not sent · demo only</span>
                     <Button variant="outline" onClick={onCopy}><Copy className="h-4 w-4" /> Copy draft</Button>
                     <Button onClick={onSave} disabled={!subject.trim() || !body.trim()}><Save className="h-4 w-4" /> Save draft</Button>
                   </div>

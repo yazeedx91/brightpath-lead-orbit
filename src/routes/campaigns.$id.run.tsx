@@ -120,7 +120,7 @@ function RunInner({ id }: { id: string }) {
           <>
             <Button variant="outline" onClick={() => runCampaign(id)}><RotateCcw className="h-4 w-4" /> Run again</Button>
             <Button variant="outline" asChild><Link to="/outreach" search={{ lead: undefined }}>Outreach</Link></Button>
-            <Button asChild><Link to="/leads" search={{ campaign: id }}>Review leads</Link></Button>
+            <Button asChild><Link to="/leads" search={{ campaign: id, qual: undefined }}>Review leads</Link></Button>
           </>
         ) : isDraft ? (
           <Button onClick={() => runCampaign(id)}><Play className="h-4 w-4" /> Run AI agent</Button>
@@ -217,7 +217,7 @@ function RunInner({ id }: { id: string }) {
       </div>
 
       {finished && (
-        <Panel title={`Qualified prospects (${campaignLeads.length})`} className="mt-6" action={<Button size="sm" variant="outline" asChild><Link to="/leads" search={{ campaign: id }}>Review all leads</Link></Button>}>
+        <Panel title={`Qualified prospects (${campaignLeads.length})`} className="mt-6" action={<Button size="sm" variant="outline" asChild><Link to="/leads" search={{ campaign: id, qual: undefined }}>Review all leads</Link></Button>}>
           {campaignLeads.length === 0 ? <p className="text-sm text-muted-foreground">No prospects reached the Qualified threshold.</p> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
